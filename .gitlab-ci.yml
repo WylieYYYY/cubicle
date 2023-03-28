@@ -1,0 +1,12 @@
+stages:
+  - build
+
+build:
+  stage: build
+  image: cubicle:latest
+  script:
+    - cargo build --target wasm32-unknown-unknown --verbose
+    - wasm-bindgen --target web target/wasm32-unknown-unknown/debug/*.wasm --out-dir build/
+  artifacts:
+    paths:
+      - build/
