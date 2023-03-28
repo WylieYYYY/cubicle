@@ -1,0 +1,11 @@
+{
+	"name": "Cubicle",
+	"version": "0.1.0",
+	"description": "A flexible container manager.",
+	"author": "WylieYYYY",
+	"manifest_version": 2,
+	"background": {
+		"page": "background.html",
+		"persistent": false
+	}
+}
