@@ -1,3 +1,6 @@
+pub use self::bits::*;
+mod bits;
+pub mod fetch;
 pub mod tabs;
 
 use js_sys::Promise;

@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use js_sys::Promise;
 use serde::Serialize;
 use wasm_bindgen::prelude::*;
+
 use super::MAP_SERIALIZER;
 
 #[wasm_bindgen]
