@@ -4,6 +4,10 @@
 	"description": "A flexible container manager.",
 	"author": "WylieYYYY",
 	"manifest_version": 2,
+	"permissions": [
+		"contextualIdentities",
+		"cookies"
+	],
 	"background": {
 		"page": "background.html",
 		"persistent": false

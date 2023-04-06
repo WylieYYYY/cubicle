@@ -14,7 +14,7 @@ use web_sys::{
     Request, RequestInit, RequestMode, Response
 };
 
-use crate::interop::bits;
+use super::bits;
 use crate::util::{self, errors::BrowserApiError};
 
 pub struct FetchReader {

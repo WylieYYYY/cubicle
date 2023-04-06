@@ -1,5 +1,5 @@
-pub use self::bits::*;
 mod bits;
+pub mod contextual_identities;
 pub mod fetch;
 pub mod tabs;
 
