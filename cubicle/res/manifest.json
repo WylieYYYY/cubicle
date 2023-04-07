@@ -8,6 +8,9 @@
 		"contextualIdentities",
 		"cookies"
 	],
+	"browser_action": {
+		"default_popup": "popup.html"
+	},
 	"background": {
 		"page": "background.html",
 		"persistent": false

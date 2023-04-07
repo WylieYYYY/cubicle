@@ -1,4 +1,5 @@
-import init from './cubicle.js';
+'use strict';
+import {default as init, onMessage} from './cubicle.js';
 
 const listenerMap = new Map();
 const wasmLoaded = init();
@@ -12,7 +13,9 @@ for (const runtimeProperty in browser.runtime) {
     browser.runtime[runtimeProperty].addListener((...handlerArgs) => {
         wasmLoaded.then(async () => {
             if (listenerMap.has(runtimeProperty))
-                await listenerMap.get(runtimeProperty)(handlerArgs);
+                await listenerMap.get(runtimeProperty)(...handlerArgs);
         });
     });
 }
+
+wasmLoaded.then(() => addRuntimeListener('onMessage', onMessage));

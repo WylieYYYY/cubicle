@@ -1,0 +1,16 @@
+.center {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.btn {
+    border: none;
+    border-radius: 4px;
+}
+
+.icon {
+    width: 1rem;
+    height: 1rem;
+    padding: 0;
+}

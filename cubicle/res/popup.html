@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" type="text/css" href="./styles/styles.css"/>
+    <script src="./popup.js" defer=""></script>
+  </head>
+  <body style="width: 15rem;">
+    <nav class="center" style="margin: auto 0.5rem;">
+      <button role="button" class="center btn">
+        <img src="styles/icon_hash.png" class="icon" alt="Container Icon" draggable="false"/>
+      </button>
+      <select id="select-container" style="flex-grow: 2; margin: auto 0.5rem;">
+        <option value="none">No Container</option>
+        <option value="new">+ Create New</option>
+      </select>
+      <button role="button" class="center btn" style="background-color: firebrick;">
+        <img src="styles/icon_delete.png" class="icon" alt="Delete"
+            draggable="false" style="filter: invert(1);"/>
+      </button>
+    </nav>
+    <main style="height: 18rem; overflow: scroll;">
+      <ul style="list-style: none; padding: 0;">
+        <li style="display: flex; align-items: center;">
+          <input class="input-suffix" type="text" maxlength="256" placeholder="new suffix ... ↵"
+              style="flex-grow: 2; margin: auto 0.5rem;"/>
+          <div id="option-btn" style="margin-inline-end: 0.5rem;">
+            <button class="center" style="padding: 0; width: 1.5rem; height: 1.5rem;">
+              <img src="styles/icon_link.png" class="icon" alt="Link" draggable="false"/>
+            </button>
+          </div>
+        </li>
+      </ul>
+      <div style="margin: auto 0.5rem;">
+        <h1 style="font-size: 1rem;">Welcome to Cubicle!</h1>
+        <p>You can create a new container by selecting above.</p>
+      </div>
+    </main>
+  </body>
+</html>
