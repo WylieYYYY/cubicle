@@ -3,7 +3,7 @@ stages:
 
 build:
   stage: build
-  image: cubicle:latest
+  image: registry.gitlab.com/wylieyyyy/cubicle:latest
   script:
     - cargo build --target wasm32-unknown-unknown --verbose
     - wasm-bindgen --target web target/wasm32-unknown-unknown/debug/*.wasm --out-dir build/

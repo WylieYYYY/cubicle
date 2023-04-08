@@ -11,9 +11,9 @@ export function addRuntimeListener(event, handler) {
 for (const runtimeProperty in browser.runtime) {
     if (!runtimeProperty.startsWith('on')) continue;
     browser.runtime[runtimeProperty].addListener((...handlerArgs) => {
-        wasmLoaded.then(async () => {
+        return wasmLoaded.then(async () => {
             if (listenerMap.has(runtimeProperty))
-                await listenerMap.get(runtimeProperty)(...handlerArgs);
+                return listenerMap.get(runtimeProperty)(...handlerArgs);
         });
     });
 }

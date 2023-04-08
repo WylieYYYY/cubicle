@@ -2,7 +2,10 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use serde::{Deserialize, Serialize};
 use strum::EnumCount;
-use strum_macros::{Display, EnumCount as EnumCountMacro, EnumString, FromRepr};
+use strum_macros::{
+    Display, EnumCount as EnumCountMacro, EnumIter, EnumString, FromRepr
+};
+use tera::{Context, Tera};
 
 #[derive(Serialize, Deserialize)]
 pub struct IdentityDetails {
@@ -45,11 +48,22 @@ impl IdentityColor {
     }
 }
 
-#[derive(Clone, Display, EnumString, Serialize, Deserialize)]
+const ICON_URL_TEMPLATE: &str = "resource://usercontext-content/{{name}}.svg";
+
+#[derive(Clone, Display, EnumIter, EnumString, Serialize, Deserialize)]
 #[serde(rename_all="lowercase")]
 #[strum(serialize_all="lowercase")]
 pub enum IdentityIcon {
     Fingerprint, Briefcase, Dollar, Cart, Circle, Gift, Vacation,
     Food, Fruit, Pet, Tree, Chill, Fence,
     #[strum(disabled, default)] Unknown(String)
+}
+
+impl IdentityIcon {
+    pub fn url(&self) -> String {
+        let mut context = Context::new();
+        context.insert("name", &self.to_string());
+        Tera::one_off(&ICON_URL_TEMPLATE, &context, false)
+            .expect("controlled enum template rendering")
+    }
 }

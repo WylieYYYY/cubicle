@@ -9,10 +9,11 @@ function colorize_suffix_input(event) {
 }
 
 function message_container_selection(event) {
+    const mainElement = document.getElementsByTagName('main')[0];
+    mainElement.replaceChildren();
     if (event.target.value === 'new') {
-        browser.runtime.sendMessage({details: {
-            color: 'blue', icon: 'circle', name: 'Cubicle'
-        }});
+        browser.runtime.sendMessage({message_type: 'request_new_container'})
+            .then(html => mainElement.innerHTML = html);
     }
 }
 

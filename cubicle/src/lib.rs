@@ -1,6 +1,7 @@
 mod interop;
 mod option;
 mod util;
+mod view;
 
 use std::panic;
 
@@ -35,9 +36,9 @@ async fn main() -> Result<(), JsValue> {
 }
 
 #[wasm_bindgen(js_name="onMessage")]
-pub async fn on_message(message: JsValue) -> Result<JsValue, JsValue> {
+pub async fn on_message(message: JsValue) -> Result<JsString, JsError> {
     let message = serde_wasm_bindgen::from_value::<Message>(message)
         .expect("unexpected message format");
-    message.act().await.map(|_| JsValue::UNDEFINED)
-        .map_err(|error| JsValue::from(JsError::new(&error.to_string())))
+    message.act().await.map(|html| JsString::from(html))
+        .map_err(|error| JsError::new(&error.to_string()))
 }
