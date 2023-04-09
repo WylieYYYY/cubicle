@@ -1,5 +1,7 @@
 'use strict';
 
+import context_new_container from './components/new-container.js';
+
 function colorize_suffix_input(event) {
     switch (event.target.value.charAt(0)) {
         case '*': event.target.style.color = 'orange';  break;
@@ -13,7 +15,10 @@ function message_container_selection(event) {
     mainElement.replaceChildren();
     if (event.target.value === 'new') {
         browser.runtime.sendMessage({message_type: 'request_new_container'})
-            .then(html => mainElement.innerHTML = html);
+            .then(html => {
+                mainElement.innerHTML = html;
+                context_new_container();
+            });
     }
 }
 

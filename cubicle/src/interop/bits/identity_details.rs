@@ -26,7 +26,7 @@ pub trait IdentityDetailsProvider {
 }
 
 #[derive(
-    Clone, Display, EnumCountMacro, EnumString, Eq,
+    Clone, Display, EnumCountMacro, EnumIter, EnumString, Eq,
     FromRepr, PartialEq, Serialize, Deserialize
 )]
 #[serde(rename_all="lowercase")]
