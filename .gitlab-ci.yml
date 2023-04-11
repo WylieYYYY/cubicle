@@ -7,7 +7,6 @@ build:
   script:
     - cargo build --target wasm32-unknown-unknown --verbose
     - wasm-bindgen --target web target/wasm32-unknown-unknown/debug/*.wasm --out-dir build/
-    - cp --recursive cubicle/res/* build/
     - cd build/ && zip -r -FS ../cubicle.xpi -- *
   artifacts:
     paths:

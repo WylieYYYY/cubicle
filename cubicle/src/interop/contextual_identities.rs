@@ -21,9 +21,14 @@ extern "C" {
     fn remove(cookie_store_id: &str) -> Promise;
 }
 
-pub struct Container { identity: ContextualIdentity }
+#[derive(Deserialize)]
+#[serde(rename_all="camelCase")]
+pub struct ContextualIdentity {
+    cookie_store_id: String, color: IdentityColor, _color_code: String,
+    icon: IdentityIcon, _icon_url: String, name: String
+}
 
-impl Container {
+impl ContextualIdentity {
     pub async fn create(mut details: IdentityDetails)
     -> Result<Self, BrowserApiError> {
         if details.color == IdentityColor::Cycle {
@@ -37,7 +42,7 @@ impl Container {
         let error = BrowserApiError::StandardMismatch {
             message: String::from("contextual identity expected")
         };
-        Ok(Self { identity: serde_wasm_bindgen::from_value(identity).or(Err(error))? })
+        Ok(serde_wasm_bindgen::from_value(identity).or(Err(error))?)
     }
     pub async fn update(&mut self, mut details: IdentityDetails)
     -> Result<(), BrowserApiError> {
@@ -47,46 +52,21 @@ impl Container {
         let details = serde_wasm_bindgen::to_value(&details)
             .expect("serialization fail unlikely");
         let error = BrowserApiError::FailedContainerUpdate {
-            name: self.identity.name.clone()
+            name: self.name.clone()
         };
-        let identity = JsFuture::from(update(&self.identity.cookie_store_id,
+        let identity = JsFuture::from(update(&self.cookie_store_id,
             details)).await.or(Err(error))?;
         let error = BrowserApiError::StandardMismatch {
             message: String::from("contextual identity expected")
         };
-        self.identity = serde_wasm_bindgen::from_value(identity)
-            .or(Err(error))?;
+        *self = serde_wasm_bindgen::from_value(identity).or(Err(error))?;
         Ok(())
     }
     pub async fn delete(self) -> Result<(), BrowserApiError> {
-        JsFuture::from(remove(&self.identity.cookie_store_id)).await.or(Err(
+        JsFuture::from(remove(&self.cookie_store_id)).await.or(Err(
             BrowserApiError::FailedContainerDeletion { container: self }))?;
         Ok(())
     }
-}
-
-impl IdentityDetailsProvider for Container {
-    fn identity_details(&self) -> IdentityDetails {
-        self.identity.identity_details()
-    }
-}
-
-impl Debug for Container {
-    fn fmt(&self, formatter: &mut Formatter<'_>) -> FmtResult {
-        formatter.write_fmt(format_args!("container `{}`", self.identity.name))
-    }
-}
-impl Display for Container {
-    fn fmt(&self, formatter: &mut Formatter<'_>) -> FmtResult {
-        (self as &dyn Debug).fmt(formatter)
-    }
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all="camelCase")]
-struct ContextualIdentity {
-    cookie_store_id: String, color: IdentityColor, _color_code: String,
-    icon: IdentityIcon, _icon_url: String, name: String
 }
 
 impl IdentityDetailsProvider for ContextualIdentity {
@@ -95,5 +75,17 @@ impl IdentityDetailsProvider for ContextualIdentity {
             color: self.color.clone(), icon: self.icon.clone(),
             name: self.name.clone()
         }
+    }
+}
+
+impl Debug for ContextualIdentity{
+    fn fmt(&self, formatter: &mut Formatter<'_>) -> FmtResult {
+        formatter.write_fmt(format_args!(
+            "contextual identity `{}`", self.name))
+    }
+}
+impl Display for ContextualIdentity {
+    fn fmt(&self, formatter: &mut Formatter<'_>) -> FmtResult {
+        (self as &dyn Debug).fmt(formatter)
     }
 }

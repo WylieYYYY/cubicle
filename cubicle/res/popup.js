@@ -1,6 +1,6 @@
 'use strict';
 
-import context_new_container from './components/new-container.js';
+import redirect from './components/context.js';
 
 function colorize_suffix_input(event) {
     switch (event.target.value.charAt(0)) {
@@ -11,15 +11,7 @@ function colorize_suffix_input(event) {
 }
 
 function message_container_selection(event) {
-    const mainElement = document.getElementsByTagName('main')[0];
-    mainElement.replaceChildren();
-    if (event.target.value === 'new') {
-        browser.runtime.sendMessage({message_type: 'request_new_container'})
-            .then(html => {
-                mainElement.innerHTML = html;
-                context_new_container();
-            });
-    }
+    if (event.target.value === 'new') redirect('new_container');
 }
 
 (function main() {

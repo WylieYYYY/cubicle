@@ -1,9 +1,23 @@
+use serde::{Deserialize, Serialize};
 use strum::IntoEnumIterator;
 use tera::{Context, Tera};
 
 use crate::interop::contextual_identities::{IdentityIcon, IdentityColor};
 
-pub fn new_container() -> String {
+#[derive(Deserialize, Serialize)]
+#[serde(rename_all="snake_case")]
+pub enum View { NewContainer }
+
+impl View {
+    pub fn render(&self) -> String {
+        use View::*;
+        match self {
+            NewContainer => new_container()
+        }
+    }
+}
+
+fn new_container() -> String {
     let mut tera = Tera::default();
     let mut context = Context::new();
     context.insert("colors", &IdentityColor::iter()

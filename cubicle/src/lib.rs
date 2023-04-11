@@ -6,7 +6,7 @@ mod view;
 use std::panic;
 
 use async_std::io::prelude::*;
-use interop::{fetch::FetchReader, contextual_identities::Container};
+use interop::{fetch::FetchReader, contextual_identities::ContextualIdentity};
 use js_sys::{ArrayBuffer, JsString, Uint8Array};
 use wasm_bindgen::prelude::*;
 use web_sys::console;
@@ -26,7 +26,7 @@ async fn main() -> Result<(), JsValue> {
     let a_buffer = Uint8Array::new(&ArrayBuffer::new(100));
     a_buffer.copy_from(&buffer);
     console::log_1(&a_buffer);
-    let mut container = Container::create(IdentityDetails::default())
+    let mut container = ContextualIdentity::create(IdentityDetails::default())
         .await.unwrap();
     let mut new_details = IdentityDetails::default();
     new_details.color = IdentityColor::Yellow;
