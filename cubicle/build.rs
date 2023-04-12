@@ -28,9 +28,7 @@ fn main() {
         let entry_filename = entry.file_name();
         let entry_filename = entry_filename.to_string_lossy();
 
-        if entry_filename.ends_with(".html") {
-            fs::remove_file(entry.path()).unwrap();
-        } else if let Some(view_name) = entry_filename.strip_suffix(
+        if let Some(view_name) = entry_filename.strip_suffix(
             &(String::from(".") + &context_extension)) {
             if view_name == context_filename { continue; }
             view_names.push(String::from(view_name));

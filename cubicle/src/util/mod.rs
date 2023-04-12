@@ -4,6 +4,7 @@ use wasm_bindgen::JsValue;
 use self::errors::BrowserApiError;
 
 pub mod errors;
+pub mod message;
 
 pub fn usize_to_u32(value: usize) -> u32 {
     let maybe_truncated = value as u32;

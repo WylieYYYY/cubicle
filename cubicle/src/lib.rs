@@ -1,5 +1,4 @@
 mod interop;
-mod option;
 mod util;
 mod view;
 
@@ -12,13 +11,13 @@ use wasm_bindgen::prelude::*;
 use web_sys::console;
 
 use crate::interop::{contextual_identities::*, fetch, tabs};
-use crate::option::Message;
+use crate::util::message::Message;
 
 #[wasm_bindgen(start)]
 async fn main() -> Result<(), JsValue> {
     panic::set_hook(Box::new(console_error_panic_hook::hook));
     let tab_creator = Closure::new(tabs::create_tab);
-    interop::addRuntimeListener("onInstalled", &tab_creator);
+    interop::add_runtime_listener("onInstalled", &tab_creator);
     tab_creator.forget();
     let mut buffer = [0; 100];
     FetchReader::try_from(fetch::get("https://wylieyyyy.gitlab.io")

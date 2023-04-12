@@ -20,4 +20,5 @@ function message_container_selection(event) {
     for (const element of document.getElementsByClassName('input-suffix')) {
         element.addEventListener('input', colorize_suffix_input);
     }
+    redirect('welcome');
 })();
