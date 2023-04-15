@@ -15,7 +15,7 @@ use web_sys::{
 };
 
 use super::bits;
-use crate::util::{self, errors::BrowserApiError};
+use crate::util::{self, errors::CustomError};
 
 pub struct FetchReader {
     reader: ReadableStreamByobReader,
@@ -94,7 +94,7 @@ impl TryFrom<ReadableStream> for FetchReader {
         let mut reader_options = ReadableStreamGetReaderOptions::new();
         reader_options.mode(ReadableStreamReaderMode::Byob);
         let reader = value.get_reader_with_options(&reader_options)
-            .dyn_into().or(Err(JsError::from(BrowserApiError::StandardMismatch {
+            .dyn_into().or(Err(JsError::from(CustomError::StandardMismatch {
                 message: String::from("a BYOB reader is expected")
             })))?;
         let state = Arc::new(Mutex::new(SharedState::default()));
@@ -126,7 +126,7 @@ pub async fn get(url: &str) -> Result<Response, JsValue> {
     connection_options.method("GET").mode(RequestMode::Cors);
     let request = Request::new_with_str_and_init(url, &connection_options)?;
     let window = web_sys::window().ok_or(JsError::from(
-        BrowserApiError::StandardMismatch {
+        CustomError::StandardMismatch {
             message: String::from("window should exist in page")
         }))?;
     let resp = JsFuture::from(window.fetch_with_request(&request)).await?;

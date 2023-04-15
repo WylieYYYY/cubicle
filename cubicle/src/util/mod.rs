@@ -1,7 +1,7 @@
 use js_sys::{Reflect, JsString};
 use wasm_bindgen::JsValue;
 
-use self::errors::BrowserApiError;
+use self::errors::CustomError;
 
 pub mod errors;
 pub mod message;
@@ -13,9 +13,9 @@ pub fn usize_to_u32(value: usize) -> u32 {
 }
 
 pub fn get_or_standard_mismatch(target: &JsValue, key: &str)
-    -> Result<JsValue, BrowserApiError> {
+    -> Result<JsValue, CustomError> {
     Reflect::get(target, &JsString::from(key))
-        .or(Err(BrowserApiError::StandardMismatch {
+        .or(Err(CustomError::StandardMismatch {
         message: format!("key `{}` is missing", key)
     }))
 }

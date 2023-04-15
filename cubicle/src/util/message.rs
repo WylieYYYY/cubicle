@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::interop::contextual_identities::{
     IdentityDetails, ContextualIdentity
 };
-use crate::util::errors::BrowserApiError;
+use crate::util::errors::CustomError;
 use crate::view::View;
 
 #[derive(Deserialize, Serialize)]
@@ -19,7 +19,7 @@ pub enum Message {
 }
 
 impl Message {
-    pub async fn act(self) -> Result<String, BrowserApiError> {
+    pub async fn act(self) -> Result<String, CustomError> {
         use Message::*;
         match self {
             RequestPage { view } => Ok(view.render().await),

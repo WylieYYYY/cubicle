@@ -1,3 +1,4 @@
+mod domain;
 mod interop;
 mod util;
 mod view;
@@ -5,6 +6,8 @@ mod view;
 use std::panic;
 
 use async_std::io::prelude::*;
+use domain::EncodedDomain;
+use domain::suffix::{SuffixMap, Suffix};
 use interop::{fetch::FetchReader, contextual_identities::ContextualIdentity};
 use js_sys::{ArrayBuffer, JsString, Uint8Array};
 use wasm_bindgen::prelude::*;
@@ -27,10 +30,19 @@ async fn main() -> Result<(), JsValue> {
     console::log_1(&a_buffer);
     let mut container = ContextualIdentity::create(IdentityDetails::default())
         .await.unwrap();
+    let container_id = container.cookie_store_id();
     let mut new_details = IdentityDetails::default();
     new_details.color = IdentityColor::Yellow;
     container.update(new_details).await.unwrap();
-    container.delete().await.unwrap();
+    let mut map = SuffixMap::default();
+    let suffix = Suffix::try_from("*.com").unwrap();
+    map.insert(suffix, container);
+    let exmaple_com = EncodedDomain::try_from("example.com").unwrap();
+    console::log_1(&JsString::from(exmaple_com.encoded()));
+    console::log_1(&JsString::from(exmaple_com.raw()));
+    console::log_1(&JsValue::from_bool(map.match_contextual_identity(
+        &exmaple_com).is_some()));
+    container_id.delete_identity().await.unwrap();
     Ok(())
 }
 

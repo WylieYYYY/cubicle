@@ -7,7 +7,7 @@ use strum_macros::{
 };
 use tera::{Context, Tera};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Deserialize, Serialize)]
 pub struct IdentityDetails {
     pub color: IdentityColor, pub icon: IdentityIcon, pub name: String
 }
@@ -26,8 +26,8 @@ pub trait IdentityDetailsProvider {
 }
 
 #[derive(
-    Clone, Display, EnumCountMacro, EnumIter, EnumString, Eq,
-    FromRepr, PartialEq, Serialize, Deserialize
+    Clone, Deserialize, Display, EnumCountMacro, EnumIter, EnumString, Eq,
+    FromRepr, PartialEq, Serialize
 )]
 #[serde(rename_all="lowercase")]
 #[strum(serialize_all="lowercase")]
@@ -50,7 +50,7 @@ impl IdentityColor {
 
 const ICON_URL_TEMPLATE: &str = "resource://usercontext-content/{{name}}.svg";
 
-#[derive(Clone, Display, EnumIter, EnumString, Serialize, Deserialize)]
+#[derive(Clone, Deserialize, Display, EnumIter, EnumString, Serialize)]
 #[serde(rename_all="lowercase")]
 #[strum(serialize_all="lowercase")]
 pub enum IdentityIcon {
