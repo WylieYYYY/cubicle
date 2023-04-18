@@ -4,6 +4,7 @@ mod util;
 mod view;
 
 use std::panic;
+use std::sync::Arc;
 
 use async_std::io::prelude::*;
 use domain::EncodedDomain;
@@ -30,13 +31,14 @@ async fn main() -> Result<(), JsValue> {
     console::log_1(&a_buffer);
     let mut container = ContextualIdentity::create(IdentityDetails::default())
         .await.unwrap();
-    let container_id = container.cookie_store_id();
+    let container_id = container.cookie_store_id().clone();
     let mut new_details = IdentityDetails::default();
     new_details.color = IdentityColor::Yellow;
     container.update(new_details).await.unwrap();
+    let arc = Arc::new(container_id.clone());
     let mut map = SuffixMap::default();
     let suffix = Suffix::try_from("*.com").unwrap();
-    map.insert(suffix, container);
+    map.suffix_match_tree().insert(suffix, Arc::downgrade(&arc));
     let exmaple_com = EncodedDomain::try_from("example.com").unwrap();
     console::log_1(&JsString::from(exmaple_com.encoded()));
     console::log_1(&JsString::from(exmaple_com.raw()));

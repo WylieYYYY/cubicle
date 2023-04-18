@@ -22,7 +22,7 @@ impl Message {
     pub async fn act(self) -> Result<String, CustomError> {
         use Message::*;
         match self {
-            RequestPage { view } => Ok(view.render().await),
+            RequestPage { view } => view.render().await,
             SubmitIdentityDetails { cookie_store_id: _, details } => {
                 ContextualIdentity::create(details).await
                     .and(Ok(String::new()))

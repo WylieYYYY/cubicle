@@ -1,44 +1,37 @@
 use std::cmp::Ordering;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 use std::iter;
-use std::ops::{DerefMut, Deref};
+use std::sync::{Weak, Arc};
 
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
 use super::EncodedDomain;
-use crate::interop::contextual_identities::ContextualIdentity;
+use crate::interop::contextual_identities::CookieStoreId;
 use crate::util::errors::CustomError;
 
-pub struct SuffixMap { tree: BTreeMap<Suffix, ContextualIdentity> }
+#[derive(Default)]
+pub struct SuffixMap {
+    _ids: HashSet<Arc<CookieStoreId>>,
+    tree: BTreeMap<Suffix, Weak<CookieStoreId>>
+}
 
 impl SuffixMap {
     pub fn match_contextual_identity(&self, domain: &EncodedDomain)
-    -> Option<&ContextualIdentity> {
+    -> Option<Arc<CookieStoreId>> {
         let start = Suffix::new(SuffixType::Exclusion, domain.tld());
         let end = Suffix::new(SuffixType::Normal, domain.clone());
         let search_range = self.tree.range(start..=end);
-        search_range.fold(None, |acc, element| {
-            if element.0.match_ordering(domain).is_eq() {
-                Some(element.1)
+        search_range.fold(None, |acc, (suffix, id)| {
+            if suffix.match_ordering(domain).is_eq() {
+                id.upgrade()
             } else { acc }
         })
     }
-}
-
-impl Default for SuffixMap {
-    fn default() -> Self {
-        Self { tree: BTreeMap::default() }
+    pub fn suffix_match_tree(&mut self)
+    -> &mut BTreeMap<Suffix, Weak<CookieStoreId>> {
+        &mut self.tree
     }
-}
-
-impl Deref for SuffixMap {
-    type Target = BTreeMap<Suffix, ContextualIdentity>;
-
-    fn deref(&self) -> &Self::Target { &self.tree }
-}
-impl DerefMut for SuffixMap {
-    fn deref_mut(&mut self) -> &mut Self::Target { &mut self.tree }
 }
 
 #[derive(Eq, PartialEq)]

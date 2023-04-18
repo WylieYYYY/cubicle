@@ -21,4 +21,10 @@ function message_container_selection(event) {
         element.addEventListener('input', colorize_suffix_input);
     }
     redirect('welcome');
+    browser.runtime.sendMessage({
+        message_type: 'request_page', view: 'fetch_all_containers'
+    }).then((html) => {
+        const selectElement = document.getElementById('select-container');
+        selectElement.innerHTML = html;
+    });
 })();

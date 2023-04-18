@@ -1,11 +1,10 @@
 use std::fmt::{Debug, Display, Formatter, Result as FmtResult};
-use std::ops::Deref;
-use std::sync::{Mutex, Arc};
+use std::hash::Hash;
 
 pub use super::bits::identity_details::*;
 
-use js_sys::Promise;
-use serde::Deserialize;
+use js_sys::{Promise, Object};
+use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
 
@@ -13,6 +12,8 @@ use crate::util::errors::CustomError;
 
 #[wasm_bindgen]
 extern "C" {
+    #[wasm_bindgen(js_namespace=["browser", "contextualIdentities"], js_name="query")]
+    fn identity_query(details: JsValue) -> Promise;
     #[wasm_bindgen(js_namespace=["browser", "contextualIdentities"], js_name="create")]
     fn identity_create(details: JsValue) -> Promise;
     #[wasm_bindgen(js_namespace=["browser", "contextualIdentities"], js_name="update")]
@@ -21,24 +22,36 @@ extern "C" {
     fn identity_remove(cookie_store_id: &str) -> Promise;
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 #[serde(rename_all="camelCase")]
 pub struct ContextualIdentity {
-    cookie_store_id: CookieStoreId, color: IdentityColor, _color_code: String,
-    icon: IdentityIcon, _icon_url: String, name: String
+    cookie_store_id: CookieStoreId, color: IdentityColor,
+    _color_code: String, icon: IdentityIcon, _icon_url: String, name: String
 }
 
 impl ContextualIdentity {
+    pub async fn fetch_all() -> Result<Vec<Self>, CustomError> {
+        let op_error = CustomError::FailedContainerOperation {
+            verb: String::from("fetch all")
+        };
+        let cast_error = CustomError::StandardMismatch {
+            message: String::from("contextual identity expected")
+        };
+        Ok(serde_wasm_bindgen::from_value::<Vec<ContextualIdentity>>(
+            JsFuture::from(identity_query(JsValue::from(Object::default())))
+            .await.or(Err(op_error))?)
+            .or(Err(cast_error))?)
+    }
     pub async fn create(mut details: IdentityDetails)
     -> Result<Self, CustomError> {
         if details.color == IdentityColor::Cycle {
             details.color = IdentityColor::new_rolling_color();
         }
         let identity = JsFuture::from(identity_create(
-            serde_wasm_bindgen::to_value( &details)
+            serde_wasm_bindgen::to_value(&details)
             .expect("serialization fail unlikely"))).await
-            .or(Err(CustomError::FailedContainerCreation {
-                name: details.name
+            .or(Err(CustomError::FailedContainerOperation {
+                verb: String::from("create")
             }))?;
         let error = CustomError::StandardMismatch {
             message: String::from("contextual identity expected")
@@ -51,8 +64,8 @@ impl ContextualIdentity {
         Ok(())
     }
 
-    pub fn cookie_store_id(&self) -> CookieStoreId {
-        self.cookie_store_id.clone()
+    pub fn cookie_store_id(&self) -> &CookieStoreId {
+        &self.cookie_store_id
     }
 }
 
@@ -77,40 +90,35 @@ impl Display for ContextualIdentity {
     }
 }
 
-#[derive(Clone, Deserialize)]
+#[derive(Clone, Deserialize, Eq, Hash, PartialEq, Serialize)]
 #[serde(transparent)]
-pub struct CookieStoreId { inner: Arc<Mutex<String>> }
+pub struct CookieStoreId { inner: String }
 
 impl CookieStoreId {
-    pub async fn update_identity(&mut self, mut details: IdentityDetails)
+    pub async fn update_identity(&self, mut details: IdentityDetails)
     -> Result<ContextualIdentity, CustomError> {
         if details.color == IdentityColor::Cycle {
             details.color = IdentityColor::new_rolling_color();
         }
-        let error = CustomError::FailedContainerUpdate {
-            name: details.name.clone()
+        let error = CustomError::FailedContainerOperation {
+            verb: String::from("update")
         };
         let details = serde_wasm_bindgen::to_value(&details)
             .expect("serialization fail unlikely");
-        let identity = JsFuture::from(identity_update(&self
-            .try_lock("update")?, details)).await.or(Err(error))?;
+        let identity = JsFuture::from(identity_update(&self.inner, details))
+            .await.or(Err(error))?;
         let error = CustomError::StandardMismatch {
             message: String::from("contextual identity expected")
         };
         Ok(serde_wasm_bindgen::from_value(identity).or(Err(error))?)
     }
-    pub async fn delete_identity(self) -> Result<(), CustomError> {
+    pub async fn delete_identity(&self) -> Result<(), CustomError> {
         let removal_result = JsFuture::from(identity_remove(
-            &self.try_lock("delete")?)).await;
+            &self.inner)).await;
         if removal_result.is_err() {
-            Err(CustomError::FailedContainerDeletion)
+            Err(CustomError::FailedContainerOperation {
+                verb: String::from("delete")
+            })
         } else { Ok(()) }
-    }
-
-    pub(self) fn try_lock(&self, locker: &str)
-    -> Result<impl Deref<Target = String> + '_, CustomError> {
-        self.inner.try_lock().or(Err(CustomError::ContainerLocked {
-            locker: String::from(locker)
-        }))
     }
 }

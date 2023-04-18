@@ -25,6 +25,7 @@ pub struct FetchReader {
     state: Arc<Mutex<SharedState>>
 }
 
+#[derive(Default)]
 struct SharedState {
     buffer: Option<Uint8Array>,
     waker: Option<Waker>,
@@ -112,12 +113,6 @@ impl TryFrom<ReadableStream> for FetchReader {
             reject_read_then: Self::read_thens(state.clone(), false),
             read_finally, state
         })
-    }
-}
-
-impl Default for SharedState {
-    fn default() -> Self {
-        Self { buffer: None, waker: None, success: None }
     }
 }
 
