@@ -3,12 +3,13 @@ use std::hash::Hash;
 
 pub use super::bits::identity_details::*;
 
+use base64::prelude::*;
 use js_sys::{Promise, Object};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
 
-use crate::util::errors::CustomError;
+use crate::util::{Base64Visitor, errors::CustomError, SingleStringVisitor};
 
 #[wasm_bindgen]
 extern "C" {
@@ -25,8 +26,11 @@ extern "C" {
 #[derive(Deserialize, Serialize)]
 #[serde(rename_all="camelCase")]
 pub struct ContextualIdentity {
-    cookie_store_id: CookieStoreId, color: IdentityColor,
-    _color_code: String, icon: IdentityIcon, _icon_url: String, name: String
+    #[serde(deserialize_with="deserialize_inner_id",
+        serialize_with="serialize_inner_id")]
+    cookie_store_id: CookieStoreId,
+    color: IdentityColor, _color_code: String, icon: IdentityIcon,
+    _icon_url: String, name: String
 }
 
 impl ContextualIdentity {
@@ -90,8 +94,21 @@ impl Display for ContextualIdentity {
     }
 }
 
-#[derive(Clone, Deserialize, Eq, Hash, PartialEq, Serialize)]
-#[serde(transparent)]
+fn deserialize_inner_id<'de, D>(deserializer: D)
+-> Result<CookieStoreId, D::Error>
+where D: Deserializer<'de> {
+    Ok(CookieStoreId {
+        inner: deserializer.deserialize_string(SingleStringVisitor)?
+    })
+}
+
+fn serialize_inner_id<S>(cookie_store_id: &CookieStoreId, serializer: S)
+-> Result<S::Ok, S::Error>
+where S: Serializer {
+    serializer.serialize_str(&cookie_store_id.inner)
+}
+
+#[derive(Clone, Eq, Hash, PartialEq)]
 pub struct CookieStoreId { inner: String }
 
 impl CookieStoreId {
@@ -120,5 +137,21 @@ impl CookieStoreId {
                 verb: String::from("delete")
             })
         } else { Ok(()) }
+    }
+}
+
+impl<'de> Deserialize<'de> for CookieStoreId {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where D: Deserializer<'de> {
+        Ok(Self { inner: deserializer.deserialize_str(Base64Visitor)? })
+    }
+}
+
+impl Serialize for CookieStoreId {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where S: Serializer {
+        let b64 = BASE64_URL_SAFE_NO_PAD.encode(&self.inner);
+        serializer.serialize_str(&(String::from(
+            Base64Visitor::MARKER_PREFIX) + &b64))
     }
 }

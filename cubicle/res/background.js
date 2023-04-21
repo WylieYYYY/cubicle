@@ -19,5 +19,5 @@ export function addRuntimeListener(event, handler) {
         });
     }
 
-    wasmLoaded.then(() => addRuntimeListener('onMessage', onMessage));
+    addRuntimeListener('onMessage', onMessage);
 })();

@@ -3,19 +3,22 @@ mod interop;
 mod util;
 mod view;
 
+use std::collections::HashMap;
 use std::panic;
 use std::sync::Arc;
 
 use async_std::io::prelude::*;
-use domain::EncodedDomain;
-use domain::suffix::{SuffixMap, Suffix};
-use interop::{fetch::FetchReader, contextual_identities::ContextualIdentity};
+use async_std::sync::Mutex;
 use js_sys::{ArrayBuffer, JsString, Uint8Array};
+use once_cell::sync::Lazy;
 use wasm_bindgen::prelude::*;
 use web_sys::console;
 
-use crate::interop::{contextual_identities::*, fetch, tabs};
-use crate::util::message::Message;
+use crate::domain::EncodedDomain;
+use crate::domain::suffix::{SuffixMap, Suffix};
+use crate::interop::{contextual_identities::*, tabs};
+use crate::interop::fetch::{self, FetchReader};
+use crate::util::{errors::CustomError, message::Message};
 
 #[wasm_bindgen(start)]
 async fn main() -> Result<(), JsValue> {
@@ -48,10 +51,31 @@ async fn main() -> Result<(), JsValue> {
     Ok(())
 }
 
+static GLOBAL_CONTEXT: Lazy<Mutex<GlobalContext>> = Lazy::new(||
+    Mutex::new(GlobalContext::default()));
+
 #[wasm_bindgen(js_name="onMessage")]
 pub async fn on_message(message: JsValue) -> Result<JsString, JsError> {
     let message = serde_wasm_bindgen::from_value::<Message>(message)
         .expect("unexpected message format");
-    message.act().await.map(|html| JsString::from(html))
+    message.act(&mut GLOBAL_CONTEXT.lock().await).await
+        .map(|html| JsString::from(html))
         .map_err(|error| JsError::new(&error.to_string()))
+}
+
+#[derive(Default)]
+pub struct GlobalContext {
+    containers: HashMap<CookieStoreId, ContextualIdentity>
+}
+
+impl GlobalContext {
+    pub async fn fetch_all_containers(&mut self)
+    -> Result<Vec<(&CookieStoreId, &ContextualIdentity)>, CustomError> {
+        self.containers = HashMap::new();
+        for container in ContextualIdentity::fetch_all().await? {
+            self.containers.insert(container.cookie_store_id().clone(),
+                container);
+        }
+        Ok(self.containers.iter().collect())
+    }
 }

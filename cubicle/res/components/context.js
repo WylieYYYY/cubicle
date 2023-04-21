@@ -10,6 +10,8 @@ const CONTEXT_MAP = new Map([
     {% endfor %}
 ]);
 
+export const COOKIE_STORE_ID_MARKER_PREFIX = "b64_";
+
 export default function redirect(viewEnum) {
     const mainElement = document.getElementsByTagName('main')[0];
     mainElement.replaceChildren();
@@ -17,6 +19,6 @@ export default function redirect(viewEnum) {
         message_type: 'request_page', view: viewEnum
     }).then((html) => {
         mainElement.innerHTML = html;
-        CONTEXT_MAP.get(viewEnum.replaceAll('_', '-'))(viewEnum);
+        CONTEXT_MAP.get(viewEnum.view.replaceAll('_', '-'))(viewEnum);
     });
 }
