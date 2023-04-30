@@ -34,6 +34,12 @@
         </li>
       {% endfor %}
     </ul>
-    <button style="float: inline-end;">Create</button>
+    <button style="float: inline-end;">
+      {% if identity %}
+        Update
+      {% else %}
+        Create
+      {% endif %}
+    </button>
   </form>
 </dialog>

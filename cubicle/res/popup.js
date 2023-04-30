@@ -24,13 +24,20 @@ function message_container_update() {
 }
 
 (function main() {
-    document.getElementById('select-container')
-        .addEventListener('change', message_container_selection);
+    const selectContainer = document.getElementById('select-container');
+    selectContainer.addEventListener('change', message_container_selection);
     document.getElementById('btn-icon')
         .addEventListener('click', message_container_update);
+    document.getElementById('btn-delete')
+        .addEventListener('click', () => redirect({
+            view: 'delete_prompt',
+            cookie_store_id: selectContainer.value
+        }));
     redirect({view: 'welcome'});
     browser.runtime.sendMessage({
-        message_type: 'request_page', view: {view: 'fetch_all_containers'}
+        message_type: 'request_page', view: {
+            view: 'fetch_all_containers', selected: null
+        }
     }).then((html) => {
         const selectElement = document.getElementById('select-container');
         selectElement.innerHTML = html;

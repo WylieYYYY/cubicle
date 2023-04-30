@@ -1,11 +1,7 @@
 use std::fmt::{Formatter, Result as FmtResult};
 
 use base64::prelude::*;
-use js_sys::{Reflect, JsString};
 use serde::de::Visitor;
-use wasm_bindgen::JsValue;
-
-use self::errors::CustomError;
 
 pub mod errors;
 pub mod message;
@@ -14,14 +10,6 @@ pub fn usize_to_u32(value: usize) -> u32 {
     let maybe_truncated = value as u32;
     if value > maybe_truncated as usize { u32::MAX }
     else { maybe_truncated }
-}
-
-pub fn get_or_standard_mismatch(target: &JsValue, key: &str)
-    -> Result<JsValue, CustomError> {
-    Reflect::get(target, &JsString::from(key))
-        .or(Err(CustomError::StandardMismatch {
-        message: format!("key `{}` is missing", key)
-    }))
 }
 
 pub struct Base64Visitor;
@@ -34,9 +22,8 @@ impl Visitor<'_> for Base64Visitor {
     type Value = String;
 
     fn expecting(&self, formatter: &mut Formatter) -> FmtResult {
-        formatter.write_str(
-            "a base-64 encoded UTF-8 string prefixed with `b64_`"
-        )
+        write!(formatter, "a base-64 encoded UTF-8 string prefixed with `{}`",
+            Self::MARKER_PREFIX)
     }
 
     fn visit_str<E>(self, string: &str) -> Result<Self::Value, E>

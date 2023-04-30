@@ -38,13 +38,9 @@ impl ContextualIdentity {
         let op_error = CustomError::FailedContainerOperation {
             verb: String::from("fetch all")
         };
-        let cast_error = CustomError::StandardMismatch {
-            message: String::from("contextual identity expected")
-        };
-        Ok(serde_wasm_bindgen::from_value::<Vec<ContextualIdentity>>(
+        super::cast_or_standard_mismatch(
             JsFuture::from(identity_query(JsValue::from(Object::default())))
             .await.or(Err(op_error))?)
-            .or(Err(cast_error))?)
     }
     pub async fn create(mut details: IdentityDetails)
     -> Result<Self, CustomError> {
@@ -57,10 +53,7 @@ impl ContextualIdentity {
             .or(Err(CustomError::FailedContainerOperation {
                 verb: String::from("create")
             }))?;
-        let error = CustomError::StandardMismatch {
-            message: String::from("contextual identity expected")
-        };
-        Ok(serde_wasm_bindgen::from_value(identity).or(Err(error))?)
+        super::cast_or_standard_mismatch(identity)
     }
     pub async fn update(&mut self, details: IdentityDetails)
     -> Result<(), CustomError> {
@@ -112,6 +105,9 @@ where S: Serializer {
 pub struct CookieStoreId { inner: String }
 
 impl CookieStoreId {
+    pub fn new(cookie_store_id: String) -> Self {
+        Self { inner: cookie_store_id }
+    }
     pub async fn update_identity(&self, mut details: IdentityDetails)
     -> Result<ContextualIdentity, CustomError> {
         if details.color == IdentityColor::Cycle {
@@ -124,10 +120,7 @@ impl CookieStoreId {
             .expect("serialization fail unlikely");
         let identity = JsFuture::from(identity_update(&self.inner, details))
             .await.or(Err(error))?;
-        let error = CustomError::StandardMismatch {
-            message: String::from("contextual identity expected")
-        };
-        Ok(serde_wasm_bindgen::from_value(identity).or(Err(error))?)
+        super::cast_or_standard_mismatch(identity)
     }
     pub async fn delete_identity(&self) -> Result<(), CustomError> {
         let removal_result = JsFuture::from(identity_remove(

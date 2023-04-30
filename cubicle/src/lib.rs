@@ -32,13 +32,7 @@ async fn main() -> Result<(), JsValue> {
     let a_buffer = Uint8Array::new(&ArrayBuffer::new(100));
     a_buffer.copy_from(&buffer);
     console::log_1(&a_buffer);
-    let mut container = ContextualIdentity::create(IdentityDetails::default())
-        .await.unwrap();
-    let container_id = container.cookie_store_id().clone();
-    let mut new_details = IdentityDetails::default();
-    new_details.color = IdentityColor::Yellow;
-    container.update(new_details).await.unwrap();
-    let arc = Arc::new(container_id.clone());
+    let arc = Arc::new(CookieStoreId::new(String::from("dummy")));
     let mut map = SuffixMap::default();
     let suffix = Suffix::try_from("*.com").unwrap();
     map.suffix_match_tree().insert(suffix, Arc::downgrade(&arc));
@@ -47,7 +41,6 @@ async fn main() -> Result<(), JsValue> {
     console::log_1(&JsString::from(exmaple_com.raw()));
     console::log_1(&JsValue::from_bool(map.match_contextual_identity(
         &exmaple_com).is_some()));
-    container_id.delete_identity().await.unwrap();
     Ok(())
 }
 
