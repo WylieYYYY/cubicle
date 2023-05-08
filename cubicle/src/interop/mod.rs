@@ -23,7 +23,7 @@ extern "C" {
 #[wasm_bindgen]
 extern "C" {
     #[wasm_bindgen(js_namespace=["browser", "runtime"], js_name="getURL")]
-    fn prepend_extension_base_url(path: &str) -> String;
+    pub fn prepend_extension_base_url(path: &str) -> String;
 }
 
 pub async fn fetch_extension_file(path: &str) -> String {

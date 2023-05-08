@@ -9,6 +9,7 @@ use crate::{interop, GlobalContext};
 use crate::interop::contextual_identities::{
     ContextualIdentity, CookieStoreId, IdentityIcon, IdentityColor
 };
+use crate::interop::tabs;
 use crate::util::errors::CustomError;
 
 #[derive(Deserialize, Display, Serialize)]
@@ -33,7 +34,9 @@ impl View {
             },
             Welcome => Ok(render_with(Context::default(), self).await),
             FetchAllContainers { selected } => {
-                fetch_all_containers(global_context, selected).await
+                let selected = selected.clone()
+                    .unwrap_or(tabs::current_tab_cookie_store_id().await?);
+                fetch_all_containers(global_context, &selected).await
             },
             DeletePrompt { cookie_store_id } => {
                 let identity = global_context.containers.get(&cookie_store_id)
@@ -66,21 +69,17 @@ async fn new_container(existing_identity: Option<&ContextualIdentity>)
 
 async fn fetch_all_containers(
     global_context: &mut impl DerefMut<Target = GlobalContext>,
-    selected: &Option<CookieStoreId>
+    selected: &CookieStoreId
 ) -> Result<String, CustomError> {
     let mut context = Context::new();
     context.insert("containers",
         &global_context.fetch_all_containers().await?);
-    if let Some(cookie_store_id) = selected {
-        context.insert("selected", cookie_store_id);
-    }
+    context.insert("selected", selected);
     Ok(Tera::default().render_str(r#"
         <option value="none">No Container</option>
         {% for container in containers %}
             <option value="{{container.0}}"
-                {% if selected and container.0 == selected %}
-                    selected=""
-                {% endif %}>
+                {% if container.0 == selected %}selected=""{% endif %}>
                 {{container.1.name}}
             </option>
         {% endfor %}

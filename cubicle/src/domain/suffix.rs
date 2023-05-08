@@ -1,40 +1,33 @@
 use std::cmp::Ordering;
-use std::collections::{BTreeMap, HashSet};
+use std::collections::BTreeSet;
 use std::iter;
-use std::sync::{Weak, Arc};
 
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
 use super::EncodedDomain;
-use crate::interop::contextual_identities::CookieStoreId;
 use crate::util::errors::CustomError;
 
 #[derive(Default)]
-pub struct SuffixMap {
-    _ids: HashSet<Arc<CookieStoreId>>,
-    tree: BTreeMap<Suffix, Weak<CookieStoreId>>
-}
+pub struct SuffixSet { set: BTreeSet<Suffix> }
 
-impl SuffixMap {
-    pub fn match_contextual_identity(&self, domain: &EncodedDomain)
-    -> Option<Arc<CookieStoreId>> {
+impl SuffixSet {
+    pub fn insert(&mut self, suffix: Suffix) -> bool {
+        self.set.insert(suffix)
+    }
+    pub fn match_suffix(&self, domain: &EncodedDomain) -> Option<Suffix> {
         let start = Suffix::new(SuffixType::Exclusion, domain.tld());
         let end = Suffix::new(SuffixType::Normal, domain.clone());
-        let search_range = self.tree.range(start..=end);
-        search_range.fold(None, |acc, (suffix, id)| {
+        let search_range = self.set.range(start..=end);
+        search_range.fold(None, |acc, suffix| {
             if suffix.match_ordering(domain).is_eq() {
-                id.upgrade()
+                Some(suffix.clone())
             } else { acc }
         })
     }
-    pub fn suffix_match_tree(&mut self)
-    -> &mut BTreeMap<Suffix, Weak<CookieStoreId>> {
-        &mut self.tree
-    }
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct Suffix { suffix_type: SuffixType, domain: EncodedDomain }
 
 impl Suffix {
@@ -95,7 +88,7 @@ impl Ord for Suffix {
     }
 }
 
-#[derive(EnumIter, Eq, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, EnumIter, Eq, Ord, PartialEq, PartialOrd)]
 pub enum SuffixType { Exclusion, Normal, Glob }
 
 impl SuffixType {

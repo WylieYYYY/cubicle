@@ -6,7 +6,6 @@ use crate::GlobalContext;
 use crate::interop::contextual_identities::{
     ContextualIdentity, CookieStoreId, IdentityDetails
 };
-use crate::interop::tabs;
 use crate::util::errors::CustomError;
 use crate::view::View;
 
@@ -43,9 +42,8 @@ impl Message {
             },
             DeleteContainer { cookie_store_id } => {
                 cookie_store_id.delete_identity().await?;
-                Ok(View::FetchAllContainers {
-                    selected: Some(tabs::current_tab_cookie_store_id().await?)
-                }.render(global_context).await?)
+                Ok(View::FetchAllContainers { selected: None }
+                    .render(global_context).await?)
             }
         }
     }

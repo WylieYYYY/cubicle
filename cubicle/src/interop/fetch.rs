@@ -1,10 +1,12 @@
 use std::io::{self, ErrorKind};
 use std::pin::Pin;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::task::{Context, Poll, Waker};
 
 use async_std::io::prelude::*;
-use js_sys::{ArrayBuffer, Error, Uint8Array};
+use async_std::sync::Mutex;
+use derivative::Derivative;
+use js_sys::{Error, Uint8Array};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{
@@ -15,81 +17,93 @@ use web_sys::{
 };
 
 use super::bits;
+use crate::interop;
 use crate::util::{self, errors::CustomError};
 
-pub struct FetchReader {
+pub struct Fetch {
     reader: ReadableStreamByobReader,
     resolve_read_then: Closure<dyn FnMut(JsValue)>,
     reject_read_then: Closure<dyn FnMut(JsValue)>,
-    read_finally: Closure<dyn FnMut()>,
     state: Arc<Mutex<SharedState>>
 }
 
-#[derive(Default)]
+#[derive(Derivative)]
+#[derivative(Default)]
 struct SharedState {
-    buffer: Option<Uint8Array>,
+    buffer: Uint8Array,
     waker: Option<Waker>,
-    success: Option<io::Result<()>>
+    #[derivative(Default(value="Some(Ok(false))"))]
+    success: Option<io::Result<bool>>
 }
 
-impl FetchReader {
-    fn read_to_buffer(self: Pin<&mut Self>, cx: &mut Context<'_>,
-        length: usize) -> Poll<io::Result<()>> {
-        let length = util::usize_to_u32(length);
-        let mut state = match self.state.lock() {
-            Err(_) => return Poll::Pending,
-            Ok(state) => state
+impl Fetch {
+    fn read_to_buffer(self: Pin<&mut Self>, cx: &mut Context<'_>, size: usize)
+    -> Poll<io::Result<bool>> {
+        let Some(mut state) = self.state.try_lock() else {
+            return Poll::Pending;
         };
 
-        if let Some(done_state) = state.success.take() {
-            return Poll::Ready(done_state);
+        match state.success.take() {
+            None => return Poll::Pending,
+            Some(Ok(false)) if state.buffer.length() == 0 => (),
+            Some(done) => {
+                state.success = Some(Ok(*done.as_ref().unwrap_or(&true)));
+                return Poll::Ready(done);
+            }
         }
 
+        let size = util::usize_to_u32(size);
+        state.buffer = Uint8Array::new_with_length(size);
+
         state.waker = Some(cx.waker().clone());
-        if state.buffer.is_some() { return Poll::Pending; }
-        drop(self.reader.read_with_array_buffer_view(
-            state.buffer.insert(Uint8Array::new(&ArrayBuffer::new(length))))
-            .then2(&self.resolve_read_then, &self.reject_read_then)
-            .finally(&self.read_finally)
-        );
+        drop(self.reader.read_with_array_buffer_view(&state.buffer)
+            .then2(&self.resolve_read_then, &self.reject_read_then));
         Poll::Pending
     }
 
-    fn read_thens(shared_state: Arc<Mutex<SharedState>>, resolve: bool)
-        -> Closure<dyn FnMut(JsValue)> {
+    fn read_thens(state: Arc<Mutex<SharedState>>, resolve: bool)
+    -> Closure<dyn FnMut(JsValue)> {
         Closure::new(move |value: JsValue| {
-            let mut shared_state = shared_state.lock()
+            let mut state = state.try_lock()
                 .expect("promise chaining should be executed synchronously");
-            shared_state.success = Some(Ok(()));
             if resolve {
-                shared_state.buffer = Some(
-                    bits::reader_value_done_pair::buffer(&value));
+                let done = interop::get_or_standard_mismatch(&value, "done")
+                    .and_then(interop::cast_or_standard_mismatch)
+                    .or(Err(io::Error::new(ErrorKind::InvalidData, 
+                        "browser's did not return a valid done value")));
+                state.success = Some(done);
+                state.buffer = bits::reader_value_done_pair::buffer(&value);
             } else {
                 let io_error = io::Error::new(ErrorKind::BrokenPipe,
                     Error::from(value).message().as_string()
                     .expect("cast of javascript string always succeed"));
-                shared_state.success = Some(Err(io_error));
+                state.success = Some(Err(io_error));
             }
+            if let Some(waker) = &state.waker { waker.clone().wake() }
         })
     }
 }
 
-impl Read for FetchReader {
+impl Read for Fetch {
     fn poll_read(mut self: Pin<&mut Self>, cx: &mut Context<'_>,
         buf: &mut [u8]) -> Poll<io::Result<usize>> {
         let ret = self.as_mut().read_to_buffer(cx, buf.len());
-        if let Poll::Ready(Ok(())) = ret {
-            let state = self.state.lock()
+        if let Poll::Ready(Ok(done)) = ret {
+            let mut state = self.state.try_lock()
                 .expect("mutex held by promises should be unlocked");
-            state.buffer.clone()
-                .expect("buffer must be assigned for ready state")
-                .copy_to(buf);
-        }
-        ret.map_ok(|_| buf.len())
+
+            if done && state.buffer.length() == 0 {
+                return Poll::Ready(Ok(0));
+            }
+
+            state.buffer.copy_to(&mut buf[..(state.buffer.length() as usize)]);
+            state.buffer = Uint8Array::new_with_length(0);
+            Poll::Ready(Ok(state.buffer.length() as usize))
+        } else { ret.map_ok(|_| unreachable!("all ok results have branched")) }
     }
 }
 
-impl TryFrom<ReadableStream> for FetchReader {
+impl TryFrom<ReadableStream> for Fetch {
     type Error = JsValue;
     fn try_from(value: ReadableStream) -> Result<Self, Self::Error> {
         let mut reader_options = ReadableStreamGetReaderOptions::new();
@@ -99,19 +113,9 @@ impl TryFrom<ReadableStream> for FetchReader {
                 message: String::from("a BYOB reader is expected")
             })))?;
         let state = Arc::new(Mutex::new(SharedState::default()));
-        let finally_state = state.clone();
-        let read_finally = Closure::new(Box::new(move || {
-            let shared_state = finally_state.lock()
-                .expect("promise chaining should be executed synchronously");
-            if let Some(waker) = shared_state.waker.as_ref() {
-                waker.clone().wake();
-            }
-        }));
         Ok(Self {
-            reader,
-            resolve_read_then: Self::read_thens(state.clone(), true),
-            reject_read_then: Self::read_thens(state.clone(), false),
-            read_finally, state
+            reader, resolve_read_then: Self::read_thens(state.clone(), true),
+            reject_read_then: Self::read_thens(state.clone(), false), state
         })
     }
 }

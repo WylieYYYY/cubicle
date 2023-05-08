@@ -1,7 +1,11 @@
+use std::io::ErrorKind;
+
 use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum CustomError {
+    #[error("input / output error: {0}")]
+    IoError(ErrorKind),
     #[error("browser's return value doesn't match the standard, {message}")]
     StandardMismatch { message: String },
     #[error("failed to {verb} container")]

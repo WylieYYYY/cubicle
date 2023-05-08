@@ -1,3 +1,4 @@
+pub mod psl;
 pub mod suffix;
 
 use std::cmp::Ordering;
@@ -25,10 +26,11 @@ impl TryFrom<&str> for EncodedDomain {
     type Error = idna::Errors;
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
-        Ok(Self {
-            encoded: idna::domain_to_ascii_strict(value)?,
-            raw: String::from(value)
-        })
+        let compat_value = idna::domain_to_ascii_strict(
+            &format!("{}.example", value))?;
+        let encoded = String::from(compat_value.strip_suffix(".example")
+            .expect("suffix preserved from encoded domain"));
+        Ok(Self { encoded, raw: String::from(value) })
     }
 }
 

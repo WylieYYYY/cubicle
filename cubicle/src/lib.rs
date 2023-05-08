@@ -5,19 +5,19 @@ mod view;
 
 use std::collections::HashMap;
 use std::panic;
-use std::sync::Arc;
 
-use async_std::io::prelude::*;
+use async_std::io::BufReader;
 use async_std::sync::Mutex;
-use js_sys::{ArrayBuffer, JsString, Uint8Array};
+use chrono::NaiveDate;
+use js_sys::JsString;
 use once_cell::sync::Lazy;
 use wasm_bindgen::prelude::*;
 use web_sys::console;
 
 use crate::domain::EncodedDomain;
-use crate::domain::suffix::{SuffixMap, Suffix};
+use crate::domain::psl::Psl;
 use crate::interop::{contextual_identities::*, tabs};
-use crate::interop::fetch::{self, FetchReader};
+use crate::interop::fetch::{self, Fetch};
 use crate::util::{errors::CustomError, message::Message};
 
 #[wasm_bindgen(start)]
@@ -26,20 +26,15 @@ async fn main() -> Result<(), JsValue> {
     let tab_creator = Closure::new(tabs::create_tab);
     interop::add_runtime_listener("onInstalled", &tab_creator);
     tab_creator.forget();
-    let mut buffer = [0; 100];
-    FetchReader::try_from(fetch::get("https://wylieyyyy.gitlab.io")
-        .await?.body().unwrap())?.read(&mut buffer).await.map_err(|e| JsString::from(e.to_string()))?;
-    let a_buffer = Uint8Array::new(&ArrayBuffer::new(100));
-    a_buffer.copy_from(&buffer);
-    console::log_1(&a_buffer);
-    let arc = Arc::new(CookieStoreId::new(String::from("dummy")));
-    let mut map = SuffixMap::default();
-    let suffix = Suffix::try_from("*.com").unwrap();
-    map.suffix_match_tree().insert(suffix, Arc::downgrade(&arc));
+    let path = interop::prepend_extension_base_url("public_suffix_list.dat");
+    let mut reader = BufReader::new(Fetch::try_from(
+        fetch::get(&path).await.unwrap().body().unwrap()).unwrap());
+    let psl = Psl::from_stream(&mut reader, NaiveDate::MIN).await.unwrap();
+    console::log_1(&serde_wasm_bindgen::to_value(&psl.last_updated()).unwrap());
     let exmaple_com = EncodedDomain::try_from("example.com").unwrap();
     console::log_1(&JsString::from(exmaple_com.encoded()));
     console::log_1(&JsString::from(exmaple_com.raw()));
-    console::log_1(&JsValue::from_bool(map.match_contextual_identity(
+    console::log_1(&JsValue::from_bool(psl.match_suffix(
         &exmaple_com).is_some()));
     Ok(())
 }
