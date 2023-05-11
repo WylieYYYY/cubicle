@@ -20,6 +20,9 @@ use super::bits;
 use crate::interop;
 use crate::util::{self, errors::CustomError};
 
+#[derive(Copy, Clone, Eq, PartialEq)]
+enum FetchState { Delivered, Consumed, Done }
+
 pub struct Fetch {
     reader: ReadableStreamByobReader,
     resolve_read_then: Closure<dyn FnMut(JsValue)>,
@@ -32,28 +35,31 @@ pub struct Fetch {
 struct SharedState {
     buffer: Uint8Array,
     waker: Option<Waker>,
-    #[derivative(Default(value="Some(Ok(false))"))]
-    success: Option<io::Result<bool>>
+    #[derivative(Default(value="Some(Ok(FetchState::Consumed))"))]
+    success: Option<io::Result<FetchState>>
 }
 
 impl Fetch {
     fn read_to_buffer(self: Pin<&mut Self>, cx: &mut Context<'_>, size: usize)
-    -> Poll<io::Result<bool>> {
+    -> Poll<io::Result<FetchState>> {
         let Some(mut state) = self.state.try_lock() else {
             return Poll::Pending;
         };
 
         match state.success.take() {
             None => return Poll::Pending,
-            Some(Ok(false)) if state.buffer.length() == 0 => (),
+            Some(Ok(FetchState::Consumed)) => (),
             Some(done) => {
-                state.success = Some(Ok(*done.as_ref().unwrap_or(&true)));
+                state.success = Some(Ok(*done.as_ref()
+                    .unwrap_or(&FetchState::Consumed)));
                 return Poll::Ready(done);
             }
         }
 
         let size = util::usize_to_u32(size);
-        state.buffer = Uint8Array::new_with_length(size);
+        if size != state.buffer.length() {
+            state.buffer = Uint8Array::new_with_length(size);
+        }
 
         state.waker = Some(cx.waker().clone());
         drop(self.reader.read_with_array_buffer_view(&state.buffer)
@@ -64,11 +70,14 @@ impl Fetch {
     fn read_thens(state: Arc<Mutex<SharedState>>, resolve: bool)
     -> Closure<dyn FnMut(JsValue)> {
         Closure::new(move |value: JsValue| {
+            use FetchState::*;
+
             let mut state = state.try_lock()
                 .expect("promise chaining should be executed synchronously");
             if resolve {
                 let done = interop::get_or_standard_mismatch(&value, "done")
                     .and_then(interop::cast_or_standard_mismatch)
+                    .and_then(|done| Ok(if done { Done } else { Delivered }))
                     .or(Err(io::Error::new(ErrorKind::InvalidData, 
                         "browser's did not return a valid done value")));
                 state.success = Some(done);
@@ -92,13 +101,12 @@ impl Read for Fetch {
             let mut state = self.state.try_lock()
                 .expect("mutex held by promises should be unlocked");
 
-            if done && state.buffer.length() == 0 {
-                return Poll::Ready(Ok(0));
-            }
+            if done == FetchState::Done { return Poll::Ready(Ok(0)); }
 
-            state.buffer.copy_to(&mut buf[..(state.buffer.length() as usize)]);
-            state.buffer = Uint8Array::new_with_length(0);
-            Poll::Ready(Ok(state.buffer.length() as usize))
+            let read_length = state.buffer.length() as usize;
+            state.buffer.copy_to(&mut buf[..read_length]);
+            state.success = Some(Ok(FetchState::Consumed));
+            Poll::Ready(Ok(read_length))
         } else { ret.map_ok(|_| unreachable!("all ok results have branched")) }
     }
 }

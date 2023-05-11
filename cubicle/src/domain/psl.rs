@@ -4,9 +4,10 @@ use async_std::io::prelude::*;
 use chrono::naive::NaiveDate;
 
 use super::EncodedDomain;
-use super::suffix::{SuffixSet, Suffix};
+use super::suffix::{Suffix, SuffixSet, SuffixType};
 use crate::util::errors::CustomError;
 
+#[derive(Default)]
 pub struct Psl { last_updated: NaiveDate, set: SuffixSet }
 
 impl Psl {
@@ -28,7 +29,8 @@ impl Psl {
         Ok(Self { last_updated, set })
     }
 
-    pub fn match_suffix(&self, domain: &EncodedDomain) -> Option<Suffix> {
+    pub fn match_suffix(&self, domain: EncodedDomain)
+    -> Option<(EncodedDomain, SuffixType)> {
         self.set.match_suffix(domain)
     }
 

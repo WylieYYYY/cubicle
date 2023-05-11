@@ -17,6 +17,10 @@ impl EncodedDomain {
             .expect("string split has at least one element"))
             .expect("validity checked from existing instance")
     }
+    pub fn parent(&self) -> Option<Self> {
+        self.encoded.split_once('.').map(|parent| Self::try_from(
+            parent.1).expect("validity checked from existing instance"))
+    }
     pub fn reverse(&self) -> impl Iterator<Item = &str> {
         self.encoded.split('.').rev()
     }

@@ -29,13 +29,16 @@ async fn main() -> Result<(), JsValue> {
     let path = interop::prepend_extension_base_url("public_suffix_list.dat");
     let mut reader = BufReader::new(Fetch::try_from(
         fetch::get(&path).await.unwrap().body().unwrap()).unwrap());
-    let psl = Psl::from_stream(&mut reader, NaiveDate::MIN).await.unwrap();
-    console::log_1(&serde_wasm_bindgen::to_value(&psl.last_updated()).unwrap());
+    let mut global_context = GLOBAL_CONTEXT.lock().await;
+    global_context.psl = Psl::from_stream(
+        &mut reader, NaiveDate::MIN).await.unwrap();
+    console::log_1(&serde_wasm_bindgen::to_value(
+        &global_context.psl.last_updated()).unwrap());
     let exmaple_com = EncodedDomain::try_from("example.com").unwrap();
     console::log_1(&JsString::from(exmaple_com.encoded()));
     console::log_1(&JsString::from(exmaple_com.raw()));
-    console::log_1(&JsValue::from_bool(psl.match_suffix(
-        &exmaple_com).is_some()));
+    console::log_1(&JsValue::from_bool(global_context.psl.match_suffix(
+        exmaple_com).is_some()));
     Ok(())
 }
 
@@ -53,7 +56,7 @@ pub async fn on_message(message: JsValue) -> Result<JsString, JsError> {
 
 #[derive(Default)]
 pub struct GlobalContext {
-    containers: HashMap<CookieStoreId, ContextualIdentity>
+    containers: HashMap<CookieStoreId, ContextualIdentity>, psl: Psl
 }
 
 impl GlobalContext {

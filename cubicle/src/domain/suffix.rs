@@ -1,6 +1,6 @@
 use std::cmp::Ordering;
 use std::collections::BTreeSet;
-use std::iter;
+use std::{convert, iter, mem};
 
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
@@ -15,7 +15,22 @@ impl SuffixSet {
     pub fn insert(&mut self, suffix: Suffix) -> bool {
         self.set.insert(suffix)
     }
-    pub fn match_suffix(&self, domain: &EncodedDomain) -> Option<Suffix> {
+    pub fn match_suffix(&self, domain: EncodedDomain)
+    -> Option<(EncodedDomain, SuffixType)> {
+        let mut domain = Some(domain);
+        let domain_iter = iter::repeat_with(|| {
+            let parent = domain.as_ref().and_then(EncodedDomain::parent);
+            mem::replace(&mut domain, parent)
+        }).map_while(convert::identity);
+        for domain in domain_iter {
+            if let Some(suffix) = self.match_suffix_exact(&domain) {
+                return Some((domain, suffix.suffix_type().clone()))
+            }
+        }
+        None
+    }
+
+    fn match_suffix_exact(&self, domain: &EncodedDomain) -> Option<Suffix> {
         let start = Suffix::new(SuffixType::Exclusion, domain.tld());
         let end = Suffix::new(SuffixType::Normal, domain.clone());
         let search_range = self.set.range(start..=end);
@@ -41,6 +56,8 @@ impl Suffix {
         };
         domain.reverse().cmp(self_reversed.chain(globbed))
     }
+    pub fn suffix_type(&self) -> &SuffixType { &self.suffix_type }
+
     pub(self) fn new(suffix_type: SuffixType, domain: EncodedDomain) -> Self {
         Self { suffix_type, domain }
     }
