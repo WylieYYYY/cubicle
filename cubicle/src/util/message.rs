@@ -3,9 +3,8 @@ use std::ops::DerefMut;
 use serde::{Deserialize, Serialize};
 
 use crate::GlobalContext;
-use crate::interop::contextual_identities::{
-    ContextualIdentity, CookieStoreId, IdentityDetails
-};
+use crate::container::{Container, ContainerVariant};
+use crate::interop::contextual_identities::{CookieStoreId, IdentityDetails};
 use crate::util::errors::CustomError;
 use crate::view::View;
 
@@ -30,18 +29,35 @@ impl Message {
             RequestPage { view } => view.render(global_context).await,
 
             SubmitIdentityDetails { cookie_store_id, details } => {
-                let identity = match cookie_store_id {
+                let cookie_store_id = match cookie_store_id {
                     Some(cookie_store_id) => {
-                        cookie_store_id.update_identity(details).await
+                        let container = global_context.containers
+                            .get_mut(&cookie_store_id)
+                            .expect("valid ID passed from message");
+                        container.update(details).await?;
+                        container.cookie_store_id().clone()
                     },
-                    None => ContextualIdentity::create(details).await
-                }?;
+                    None => {
+                        let container = Container::create(details,
+                            ContainerVariant::default()).await?;
+                        let cookie_store_id = container.cookie_store_id().clone();
+                        global_context.containers.insert(
+                            container.cookie_store_id().clone(), container);
+                        cookie_store_id
+                    }
+                };
                 Ok(View::FetchAllContainers {
-                    selected: Some(identity.cookie_store_id().clone())
+                    selected: Some(cookie_store_id)
                 }.render(global_context).await?)
             },
             DeleteContainer { cookie_store_id } => {
-                cookie_store_id.delete_identity().await?;
+                let container = global_context.containers
+                    .remove(&cookie_store_id)
+                    .expect("valid ID passed from message");
+                if let Err(container) = container.delete().await {
+                    global_context.containers
+                        .insert(cookie_store_id, container);
+                }
                 Ok(View::FetchAllContainers { selected: None }
                     .render(global_context).await?)
             }

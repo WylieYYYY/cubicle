@@ -5,9 +5,10 @@ use strum::IntoEnumIterator;
 use strum_macros::Display;
 use tera::{Context, Tera};
 
+use crate::container::Container;
 use crate::{interop, GlobalContext};
 use crate::interop::contextual_identities::{
-    ContextualIdentity, CookieStoreId, IdentityIcon, IdentityColor
+    CookieStoreId, IdentityIcon, IdentityColor, IdentityDetailsProvider
 };
 use crate::interop::tabs;
 use crate::util::errors::CustomError;
@@ -39,21 +40,21 @@ impl View {
                 fetch_all_containers(global_context, &selected).await
             },
             DeletePrompt { cookie_store_id } => {
-                let identity = global_context.containers.get(&cookie_store_id)
+                let container = global_context.containers.get(&cookie_store_id)
                     .expect("valid ID passed from message");
-                Ok(render_with(delete_prompt(identity).await, self).await)
+                Ok(render_with(delete_prompt(container).await, self).await)
             }
             UpdateContainer { cookie_store_id } => {
-                let identity = global_context.containers.get(&cookie_store_id)
+                let container = global_context.containers.get(&cookie_store_id)
                     .expect("valid ID passed from message");
                 Ok(render_with(new_container(
-                    Some(identity)).await, &NewContainer).await)
+                    Some(container)).await, &NewContainer).await)
             }
         }
     }
 }
 
-async fn new_container(existing_identity: Option<&ContextualIdentity>)
+async fn new_container(existing_container: Option<&Container>)
 -> Context {
     let mut context = Context::new();
     context.insert("colors", &IdentityColor::iter()
@@ -61,8 +62,8 @@ async fn new_container(existing_identity: Option<&ContextualIdentity>)
     context.insert("icons", &IdentityIcon::iter()
         .map(|icon| (icon.clone(), icon.url()))
         .collect::<Vec<(IdentityIcon, String)>>());
-    if let Some(identity) = existing_identity {
-        context.insert("identity", identity);
+    if let Some(container) = existing_container {
+        context.insert("details", &container.identity_details());
     }
     context
 }
@@ -87,9 +88,9 @@ async fn fetch_all_containers(
     "#, &context).expect("controlled enum template rendering"))
 }
 
-async fn delete_prompt(identity: &ContextualIdentity) -> Context {
+async fn delete_prompt(container: &Container) -> Context {
     let mut context = Context::new();
-    context.insert("identity", identity);
+    context.insert("name", &container.identity_details().name);
     context
 }
 

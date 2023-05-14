@@ -1,4 +1,4 @@
-{% if identity %}
+{% if details %}
   <h1>Update existing container</h1>
 {% else %}
   <h1>Create new container</h1>
@@ -6,7 +6,7 @@
 <dialog style="border: none;" open="">
   <form id="form-new-container" method="dialog">
     <input type="text" name="name" maxlength="256" placeholder="container name"
-        value="{% if identity %}{{identity.name}}{% endif %}"
+        value="{% if details %}{{details.name}}{% endif %}"
         style="flex-grow: 2; margin: auto 0.5rem;"/>
     <h2>Color</h2>
     <ul style="display: flex; flex-wrap: wrap; list-style: none; margin: 0; padding: 0;">
@@ -14,7 +14,7 @@
         <li style="padding: 0.25rem;">
           <input type="radio" id="radio-{{color}}" name="color" value="{{color}}"
               style="display: none;"
-              {% if identity and color == identity.color %}checked=""{% endif %}/>
+              {% if details and color == details.color %}checked=""{% endif %}/>
           <label aria-label="{{color}}" for="radio-{{color}}" style="cursor: pointer;">
             <span aria-hidden="true" class="icon" style="color: {{color}};">&#xf163;</span>
           </label>
@@ -27,7 +27,7 @@
         <li style="padding: 0.25rem;">
           <input type="radio" id="radio-{{icon.0}}" name="icon" value="{{icon.0}}"
               style="display: none;"
-              {% if identity and icon.0 == identity.icon %}checked=""{% endif %}/>
+              {% if details and icon.0 == details.icon %}checked=""{% endif %}/>
           <label for="radio-{{icon.0}}" style="cursor: pointer;">
             <img src="{{icon.1}}" alt="{{icon.0}}" class="icon" draggable="false"/>
           </label>
@@ -35,7 +35,7 @@
       {% endfor %}
     </ul>
     <button style="float: inline-end;">
-      {% if identity %}
+      {% if details %}
         Update
       {% else %}
         Create

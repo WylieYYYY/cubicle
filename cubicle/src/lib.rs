@@ -1,3 +1,4 @@
+mod container;
 mod domain;
 mod interop;
 mod util;
@@ -14,6 +15,7 @@ use once_cell::sync::Lazy;
 use wasm_bindgen::prelude::*;
 use web_sys::console;
 
+use crate::container::Container;
 use crate::domain::EncodedDomain;
 use crate::domain::psl::Psl;
 use crate::interop::{contextual_identities::*, tabs};
@@ -56,17 +58,19 @@ pub async fn on_message(message: JsValue) -> Result<JsString, JsError> {
 
 #[derive(Default)]
 pub struct GlobalContext {
-    containers: HashMap<CookieStoreId, ContextualIdentity>, psl: Psl
+    containers: HashMap<CookieStoreId, Container>, psl: Psl
 }
 
 impl GlobalContext {
     pub async fn fetch_all_containers(&mut self)
-    -> Result<Vec<(&CookieStoreId, &ContextualIdentity)>, CustomError> {
+    -> Result<Vec<(&CookieStoreId, IdentityDetails)>, CustomError> {
         self.containers = HashMap::new();
-        for container in ContextualIdentity::fetch_all().await? {
-            self.containers.insert(container.cookie_store_id().clone(),
-                container);
+        for identity in ContextualIdentity::fetch_all().await? {
+            self.containers.insert(identity.cookie_store_id().clone(),
+                Container::from(identity));
         }
-        Ok(self.containers.iter().collect())
+        Ok(self.containers.iter().map(|(cookie_store_id, container)| {
+            (cookie_store_id, container.identity_details())
+        }).collect())
     }
 }
