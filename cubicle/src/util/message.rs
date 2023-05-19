@@ -39,10 +39,9 @@ impl Message {
                     },
                     None => {
                         let container = Container::create(details,
-                            ContainerVariant::default()).await?;
+                            ContainerVariant::Permanent).await?;
                         let cookie_store_id = container.cookie_store_id().clone();
-                        global_context.containers.insert(
-                            container.cookie_store_id().clone(), container);
+                        global_context.containers.insert(container);
                         cookie_store_id
                     }
                 };
@@ -55,8 +54,7 @@ impl Message {
                     .remove(&cookie_store_id)
                     .expect("valid ID passed from message");
                 if let Err(container) = container.delete().await {
-                    global_context.containers
-                        .insert(cookie_store_id, container);
+                    global_context.containers.insert(container);
                 }
                 Ok(View::FetchAllContainers { selected: None }
                     .render(global_context).await?)

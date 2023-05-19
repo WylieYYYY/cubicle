@@ -1,4 +1,4 @@
-use std::ops::DerefMut;
+use std::{iter, ops::DerefMut};
 
 use serde::{Deserialize, Serialize};
 use strum::IntoEnumIterator;
@@ -21,7 +21,8 @@ pub enum View {
     Welcome,
     FetchAllContainers { selected: Option<CookieStoreId> },
     DeletePrompt { cookie_store_id: CookieStoreId },
-    UpdateContainer { cookie_store_id: CookieStoreId }
+    UpdateContainer { cookie_store_id: CookieStoreId },
+    ContainerDetail { cookie_store_id: CookieStoreId }
 }
 
 impl View {
@@ -31,7 +32,7 @@ impl View {
         use View::*;
         match self {
             NewContainer => {
-                Ok(render_with(new_container(None).await, self).await)
+                Ok(render_with(new_container(None), self).await)
             },
             Welcome => Ok(render_with(Context::default(), self).await),
             FetchAllContainers { selected } => {
@@ -40,21 +41,26 @@ impl View {
                 fetch_all_containers(global_context, &selected).await
             },
             DeletePrompt { cookie_store_id } => {
-                let container = global_context.containers.get(&cookie_store_id)
+                let container = global_context.containers.get(cookie_store_id)
                     .expect("valid ID passed from message");
-                Ok(render_with(delete_prompt(container).await, self).await)
+                Ok(render_with(delete_prompt(container), self).await)
             }
             UpdateContainer { cookie_store_id } => {
-                let container = global_context.containers.get(&cookie_store_id)
+                let container = global_context.containers.get(cookie_store_id)
                     .expect("valid ID passed from message");
                 Ok(render_with(new_container(
-                    Some(container)).await, &NewContainer).await)
+                    Some(container)), &NewContainer).await)
+            },
+            ContainerDetail { cookie_store_id } => {
+                let container = global_context.containers.get(cookie_store_id)
+                    .expect("valid ID passed from message");
+                Ok(render_with(container_detail(container), self).await)
             }
         }
     }
 }
 
-async fn new_container(existing_container: Option<&Container>)
+fn new_container(existing_container: Option<&Container>)
 -> Context {
     let mut context = Context::new();
     context.insert("colors", &IdentityColor::iter()
@@ -88,9 +94,17 @@ async fn fetch_all_containers(
     "#, &context).expect("controlled enum template rendering"))
 }
 
-async fn delete_prompt(container: &Container) -> Context {
+fn delete_prompt(container: &Container) -> Context {
     let mut context = Context::new();
     context.insert("name", &container.identity_details().name);
+    context
+}
+
+fn container_detail(container: &Container) -> Context {
+    let mut context = Context::new();
+    context.insert("suffixes", &container.suffixes.iter().map(|suffix| {
+            String::from(suffix.suffix_type().prefix()) + suffix.domain().raw()
+        }).chain(iter::once(String::new())).collect::<Vec<String>>());
     context
 }
 

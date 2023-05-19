@@ -4,7 +4,6 @@ mod interop;
 mod util;
 mod view;
 
-use std::collections::HashMap;
 use std::panic;
 
 use async_std::io::BufReader;
@@ -15,7 +14,7 @@ use once_cell::sync::Lazy;
 use wasm_bindgen::prelude::*;
 use web_sys::console;
 
-use crate::container::Container;
+use crate::container::{Container, ContainerOwner};
 use crate::domain::EncodedDomain;
 use crate::domain::psl::Psl;
 use crate::interop::{contextual_identities::*, tabs};
@@ -38,9 +37,8 @@ async fn main() -> Result<(), JsValue> {
         &global_context.psl.last_updated()).unwrap());
     let exmaple_com = EncodedDomain::try_from("example.com").unwrap();
     console::log_1(&JsString::from(exmaple_com.encoded()));
-    console::log_1(&JsString::from(exmaple_com.raw()));
-    console::log_1(&JsValue::from_bool(global_context.psl.match_suffix(
-        exmaple_com).is_some()));
+    console::log_1(&JsValue::from_f64(global_context.psl.match_suffix(
+        exmaple_com).count() as f64));
     Ok(())
 }
 
@@ -58,19 +56,17 @@ pub async fn on_message(message: JsValue) -> Result<JsString, JsError> {
 
 #[derive(Default)]
 pub struct GlobalContext {
-    containers: HashMap<CookieStoreId, Container>, psl: Psl
+    containers: ContainerOwner, psl: Psl
 }
 
 impl GlobalContext {
     pub async fn fetch_all_containers(&mut self)
     -> Result<Vec<(&CookieStoreId, IdentityDetails)>, CustomError> {
-        self.containers = HashMap::new();
-        for identity in ContextualIdentity::fetch_all().await? {
-            self.containers.insert(identity.cookie_store_id().clone(),
-                Container::from(identity));
-        }
-        Ok(self.containers.iter().map(|(cookie_store_id, container)| {
-            (cookie_store_id, container.identity_details())
+        self.containers = ContainerOwner::from_iter(
+            ContextualIdentity::fetch_all()
+            .await?.into_iter().map(Container::from));
+        Ok(self.containers.iter().map(|container| {
+            (container.cookie_store_id(), container.identity_details())
         }).collect())
     }
 }

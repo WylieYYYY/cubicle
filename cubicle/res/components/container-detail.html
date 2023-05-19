@@ -1,11 +1,13 @@
 <ul style="list-style: none; padding: 0;">
-  <li style="display: flex; align-items: center;">
-    <input class="input-suffix" type="text" maxlength="256" placeholder="new suffix ... ↵"
-        style="flex-grow: 2; margin: auto 0.5rem;"/>
-    <div id="option-btn" style="margin-inline-end: 0.5rem;">
-      <button aria-label="Link suffix" class="center btn">
-        <span aria-hidden="true" class="icon">&#xe157;</span>
-      </button>
-    </div>
-  </li>
+  {% for suffix in suffixes %}
+    <li style="display: flex; align-items: center;">
+      <input class="input-suffix" type="text" maxlength="256" placeholder="new suffix ... ↵"
+          value="{{suffix}}" style="flex-grow: 2; margin: auto 0.5rem;"/>
+      <div id="option-btn" style="margin-inline-end: 0.5rem;">
+        <button aria-label="Link suffix" class="center btn">
+          <span aria-hidden="true" class="icon">&#xe157;</span>
+        </button>
+      </div>
+    </li>
+  {% endfor %}
 </ul>

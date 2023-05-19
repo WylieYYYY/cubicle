@@ -16,19 +16,18 @@ impl SuffixSet {
         self.set.insert(suffix)
     }
     pub fn match_suffix(&self, domain: EncodedDomain)
-    -> Option<(EncodedDomain, SuffixType)> {
+    -> impl Iterator<Item = (EncodedDomain, SuffixType)> + '_ {
         let mut domain = Some(domain);
-        let domain_iter = iter::repeat_with(|| {
+        let domain_iter = iter::repeat_with(move || {
             let parent = domain.as_ref().and_then(EncodedDomain::parent);
             mem::replace(&mut domain, parent)
         }).map_while(convert::identity);
-        for domain in domain_iter {
-            if let Some(suffix) = self.match_suffix_exact(&domain) {
-                return Some((domain, suffix.suffix_type().clone()))
-            }
-        }
-        None
+        domain_iter.filter_map(|domain| {
+            self.match_suffix_exact(&domain)
+                .map(|suffix| (domain, suffix.suffix_type().clone()))
+        })
     }
+    pub fn iter(&self) -> impl Iterator<Item = &Suffix> { self.set.iter() }
 
     fn match_suffix_exact(&self, domain: &EncodedDomain) -> Option<Suffix> {
         let start = Suffix::new(SuffixType::Exclusion, domain.tld());
@@ -57,6 +56,7 @@ impl Suffix {
         domain.reverse().cmp(self_reversed.chain(globbed))
     }
     pub fn suffix_type(&self) -> &SuffixType { &self.suffix_type }
+    pub fn domain(&self) -> &EncodedDomain { &self.domain }
 
     pub(self) fn new(suffix_type: SuffixType, domain: EncodedDomain) -> Self {
         Self { suffix_type, domain }

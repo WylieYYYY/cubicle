@@ -30,7 +30,7 @@ impl Psl {
     }
 
     pub fn match_suffix(&self, domain: EncodedDomain)
-    -> Option<(EncodedDomain, SuffixType)> {
+    -> impl Iterator<Item = (EncodedDomain, SuffixType)> + '_ {
         self.set.match_suffix(domain)
     }
 

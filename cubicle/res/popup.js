@@ -8,6 +8,11 @@ import {
 function message_container_selection(event) {
     if (event.target.value === 'new') redirect({view: 'new_container'});
     else if (event.target.value === 'none') redirect({view: 'welcome'});
+    else {
+        redirect({
+            view: 'container_detail', cookie_store_id: event.target.value
+        });
+    }
 
     const btnDelete = document.getElementById('btn-delete');
     if (event.target.value.startsWith(COOKIE_STORE_ID_MARKER_PREFIX)) {
