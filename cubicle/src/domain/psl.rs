@@ -1,20 +1,22 @@
+use std::collections::BTreeSet;
 use std::io::ErrorKind;
 
 use async_std::io::prelude::*;
 use chrono::naive::NaiveDate;
+use serde::Serialize;
 
 use super::EncodedDomain;
-use super::suffix::{Suffix, SuffixSet, SuffixType};
+use super::suffix::{self, Suffix, SuffixType};
 use crate::util::errors::CustomError;
 
-#[derive(Default)]
-pub struct Psl { last_updated: NaiveDate, set: SuffixSet }
+#[derive(Default, Serialize)]
+pub struct Psl { last_updated: NaiveDate, set: BTreeSet<Suffix> }
 
 impl Psl {
     pub async fn from_stream<T>(stream: &mut T, last_updated: NaiveDate)
     -> Result<Self, CustomError>
     where T: BufRead + Unpin {
-        let mut set = SuffixSet::default();
+        let mut set = BTreeSet::default();
         let mut buf = String::new();
         while let 1.. = stream.read_line(&mut buf).await
             .map_err(|error| CustomError::IoError(error.kind()))? {
@@ -31,7 +33,7 @@ impl Psl {
 
     pub fn match_suffix(&self, domain: EncodedDomain)
     -> impl Iterator<Item = (EncodedDomain, SuffixType)> + '_ {
-        self.set.match_suffix(domain)
+        suffix::match_suffix(&self.set, domain)
     }
 
     pub fn last_updated(&self) -> NaiveDate { self.last_updated }

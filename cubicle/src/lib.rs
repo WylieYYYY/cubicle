@@ -9,15 +9,17 @@ use std::panic;
 use async_std::io::BufReader;
 use async_std::sync::Mutex;
 use chrono::NaiveDate;
+use derivative::Derivative;
 use js_sys::JsString;
 use once_cell::sync::Lazy;
+use serde::Serialize;
 use wasm_bindgen::prelude::*;
 use web_sys::console;
 
 use crate::container::{Container, ContainerOwner};
 use crate::domain::EncodedDomain;
 use crate::domain::psl::Psl;
-use crate::interop::{contextual_identities::*, tabs};
+use crate::interop::{contextual_identities::*, MAP_SERIALIZER, storage, tabs};
 use crate::interop::fetch::{self, Fetch};
 use crate::util::{errors::CustomError, message::Message};
 
@@ -31,8 +33,11 @@ async fn main() -> Result<(), JsValue> {
     let mut reader = BufReader::new(Fetch::try_from(
         fetch::get(&path).await.unwrap().body().unwrap()).unwrap());
     let mut global_context = GLOBAL_CONTEXT.lock().await;
+    drop(global_context.fetch_all_containers().await);
     global_context.psl = Psl::from_stream(
         &mut reader, NaiveDate::MIN).await.unwrap();
+    drop(storage::set_with_keys(
+        global_context.serialize(MAP_SERIALIZER)?).await);
     console::log_1(&serde_wasm_bindgen::to_value(
         &global_context.psl.last_updated()).unwrap());
     let exmaple_com = EncodedDomain::try_from("example.com").unwrap();
@@ -54,9 +59,14 @@ pub async fn on_message(message: JsValue) -> Result<JsString, JsError> {
         .map_err(|error| JsError::new(&error.to_string()))
 }
 
-#[derive(Default)]
+#[derive(Derivative, Serialize)]
+#[derivative(Default)]
 pub struct GlobalContext {
-    containers: ContainerOwner, psl: Psl
+    #[derivative(Default(value="(0, 1, 0)"))]
+    version: (i16, i16, i16),
+    #[serde(flatten)]
+    containers: ContainerOwner,
+    psl: Psl
 }
 
 impl GlobalContext {

@@ -1,4 +1,6 @@
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::{Formatter, Result as FmtResult};
+use std::ops::RangeBounds;
 
 use base64::prelude::*;
 use serde::de::Visitor;
@@ -10,6 +12,28 @@ pub fn usize_to_u32(value: usize) -> u32 {
     let maybe_truncated = value as u32;
     if value > maybe_truncated as usize { u32::MAX }
     else { maybe_truncated }
+}
+
+pub trait KeyRangeExt<'a, K>
+where K: Ord + 'a {
+    fn key_range<R>(&'a self, range: R) -> Box<dyn Iterator<Item = &'a K> + 'a>
+    where R: RangeBounds<K>;
+}
+
+impl<'a, K> KeyRangeExt<'a, K> for BTreeSet<K>
+where K: Ord + 'a {
+    fn key_range<R>(&'a self, range: R) -> Box<dyn Iterator<Item = &'a K> + 'a>
+    where R: RangeBounds<K> {
+        Box::new(self.range(range))
+    }
+}
+
+impl<'a, K, V> KeyRangeExt<'a, K> for BTreeMap<K, V>
+where K: Ord + 'a {
+    fn key_range<R>(&'a self, range: R) -> Box<dyn Iterator<Item = &'a K> + 'a>
+    where R: RangeBounds<K> {
+        Box::new(BTreeMap::range(self, range).map(|(k, _)| k))
+    }
 }
 
 pub struct Base64Visitor;

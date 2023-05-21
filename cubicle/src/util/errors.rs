@@ -10,6 +10,8 @@ pub enum CustomError {
     StandardMismatch { message: String },
     #[error("failed to {verb} container")]
     FailedContainerOperation { verb: String },
+    #[error("failed to {verb_prep} storage")]
+    FailedStorageOperation { verb_prep: String },
     #[error("failed to fetch the active tab")]
     FailedFetchActiveTab,
 

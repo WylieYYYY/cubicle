@@ -6,7 +6,8 @@
 	"manifest_version": 2,
 	"permissions": [
 		"contextualIdentities",
-		"cookies"
+		"cookies",
+		"storage"
 	],
 	"browser_action": {
 		"default_popup": "popup.html"

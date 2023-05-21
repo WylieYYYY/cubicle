@@ -1,6 +1,7 @@
 mod bits;
 pub mod contextual_identities;
 pub mod fetch;
+pub mod storage;
 pub mod tabs;
 
 use std::any;
@@ -50,5 +51,5 @@ where T: for <'de> Deserialize<'de> {
     }))?)
 }
 
-const MAP_SERIALIZER: &Serializer = &Serializer::new()
+pub const MAP_SERIALIZER: &Serializer = &Serializer::new()
     .serialize_maps_as_objects(true);

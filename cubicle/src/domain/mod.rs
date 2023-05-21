@@ -3,7 +3,9 @@ pub mod suffix;
 
 use std::cmp::Ordering;
 
-#[derive(Clone, Eq)]
+use serde::Serialize;
+
+#[derive(Clone, Eq, Serialize)]
 pub struct EncodedDomain { encoded: String, raw: String }
 
 impl EncodedDomain {

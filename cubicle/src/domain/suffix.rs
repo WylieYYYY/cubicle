@@ -1,47 +1,41 @@
 use std::cmp::Ordering;
-use std::collections::BTreeSet;
 use std::{convert, iter, mem};
 
+use serde::Serialize;
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
 use super::EncodedDomain;
-use crate::util::errors::CustomError;
+use crate::util::{errors::CustomError, KeyRangeExt};
 
-#[derive(Default)]
-pub struct SuffixSet { set: BTreeSet<Suffix> }
-
-impl SuffixSet {
-    pub fn insert(&mut self, suffix: Suffix) -> bool {
-        self.set.insert(suffix)
-    }
-    pub fn match_suffix(&self, domain: EncodedDomain)
-    -> impl Iterator<Item = (EncodedDomain, SuffixType)> + '_ {
-        let mut domain = Some(domain);
-        let domain_iter = iter::repeat_with(move || {
-            let parent = domain.as_ref().and_then(EncodedDomain::parent);
-            mem::replace(&mut domain, parent)
-        }).map_while(convert::identity);
-        domain_iter.filter_map(|domain| {
-            self.match_suffix_exact(&domain)
-                .map(|suffix| (domain, suffix.suffix_type().clone()))
-        })
-    }
-    pub fn iter(&self) -> impl Iterator<Item = &Suffix> { self.set.iter() }
-
-    fn match_suffix_exact(&self, domain: &EncodedDomain) -> Option<Suffix> {
-        let start = Suffix::new(SuffixType::Exclusion, domain.tld());
-        let end = Suffix::new(SuffixType::Normal, domain.clone());
-        let search_range = self.set.range(start..=end);
-        search_range.fold(None, |acc, suffix| {
-            if suffix.match_ordering(domain).is_eq() {
-                Some(suffix.clone())
-            } else { acc }
-        })
-    }
+pub fn match_suffix<'a, T>(set: &'a T, domain: EncodedDomain)
+-> impl Iterator<Item = (EncodedDomain, SuffixType)> + 'a
+where T: KeyRangeExt<'a, Suffix> + 'a {
+    let mut domain = Some(domain);
+    let domain_iter = iter::repeat_with(move || {
+        let parent = domain.as_ref().and_then(EncodedDomain::parent);
+        mem::replace(&mut domain, parent)
+    }).map_while(convert::identity);
+    domain_iter.filter_map(|domain| {
+        match_suffix_exact(set, &domain)
+            .map(|suffix| (domain, suffix.suffix_type().clone()))
+    })
 }
 
-#[derive(Clone, Eq, PartialEq)]
+fn match_suffix_exact<'a, T>(set: &'a T, domain: &EncodedDomain)
+-> Option<Suffix>
+where T: KeyRangeExt<'a, Suffix> + 'a {
+    let start = Suffix::new(SuffixType::Exclusion, domain.tld());
+    let end = Suffix::new(SuffixType::Normal, domain.clone());
+    let search_range = set.key_range(start..=end);
+    search_range.fold(None, |acc, suffix| {
+        if suffix.match_ordering(domain).is_eq() {
+            Some(suffix.clone())
+        } else { acc }
+    })
+}
+
+#[derive(Clone, Eq, PartialEq, Serialize)]
 pub struct Suffix { suffix_type: SuffixType, domain: EncodedDomain }
 
 impl Suffix {
@@ -105,7 +99,7 @@ impl Ord for Suffix {
     }
 }
 
-#[derive(Clone, EnumIter, Eq, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, EnumIter, Eq, Ord, PartialEq, PartialOrd, Serialize)]
 pub enum SuffixType { Exclusion, Normal, Glob }
 
 impl SuffixType {

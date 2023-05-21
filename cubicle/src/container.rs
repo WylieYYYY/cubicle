@@ -1,14 +1,18 @@
-use std::collections::{HashMap, BTreeMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
-use crate::domain::suffix::{Suffix, SuffixSet};
+use serde::Serialize;
+
+use crate::domain::suffix::Suffix;
 use crate::interop::contextual_identities::{
     ContextualIdentity, CookieStoreId, IdentityDetails, IdentityDetailsProvider
 };
 use crate::util::errors::CustomError;
 
-#[derive(Default)]
+#[derive(Default, Serialize)]
 pub struct ContainerOwner {
+    #[serde(skip)]
     suffix_id_map: BTreeMap<Suffix, CookieStoreId>,
+    #[serde(flatten)]
     id_container_map: HashMap<CookieStoreId, Container>
 }
 
@@ -47,16 +51,17 @@ impl FromIterator<Container> for ContainerOwner {
     }
 }
 
+#[derive(Serialize)]
 pub struct Container {
     identity: ContextualIdentity, pub variant: ContainerVariant,
-    pub suffixes: SuffixSet
+    pub suffixes: BTreeSet<Suffix>
 }
 
 impl Container {
     pub async fn create(details: IdentityDetails, variant: ContainerVariant)
     -> Result<Self, CustomError> {
         let identity = ContextualIdentity::create(details).await?;
-        Ok(Self { identity, variant, suffixes: SuffixSet::default() })
+        Ok(Self { identity, variant, suffixes: BTreeSet::default() })
     }
     pub async fn update(&mut self, details: IdentityDetails)
     -> Result<(), CustomError> {
@@ -80,9 +85,10 @@ impl From<ContextualIdentity> for Container {
     fn from(identity: ContextualIdentity) -> Self {
         Self {
             identity, variant: ContainerVariant::Permanent,
-            suffixes: SuffixSet::default()
+            suffixes: BTreeSet::default()
         }
     }
 }
 
+#[derive(Serialize)]
 pub enum ContainerVariant { Permanent }
