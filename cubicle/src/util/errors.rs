@@ -15,6 +15,9 @@ pub enum CustomError {
     #[error("failed to fetch the active tab")]
     FailedFetchActiveTab,
 
+    #[error("unsupported version")]
+    UnsupportedVersion,
+
     #[error(transparent)]
     InvalidDomain { #[from] source: idna::Errors },
     #[error("invalid suffix format `{suffix}`")]

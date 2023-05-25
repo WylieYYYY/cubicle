@@ -1,7 +1,7 @@
 use std::cmp::Ordering;
 use std::{convert, iter, mem};
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
@@ -27,15 +27,11 @@ fn match_suffix_exact<'a, T>(set: &'a T, domain: &EncodedDomain)
 where T: KeyRangeExt<'a, Suffix> + 'a {
     let start = Suffix::new(SuffixType::Exclusion, domain.tld());
     let end = Suffix::new(SuffixType::Normal, domain.clone());
-    let search_range = set.key_range(start..=end);
-    search_range.fold(None, |acc, suffix| {
-        if suffix.match_ordering(domain).is_eq() {
-            Some(suffix.clone())
-        } else { acc }
-    })
+    let mut search_range = set.key_range(start..=end);
+    search_range.rfind(|suffix| suffix.match_ordering(domain).is_eq()).cloned()
 }
 
-#[derive(Clone, Eq, PartialEq, Serialize)]
+#[derive(Clone, Deserialize, Eq, PartialEq, Serialize)]
 pub struct Suffix { suffix_type: SuffixType, domain: EncodedDomain }
 
 impl Suffix {
@@ -49,8 +45,15 @@ impl Suffix {
         };
         domain.reverse().cmp(self_reversed.chain(globbed))
     }
+
+    pub fn encoded(&self) -> String {
+        format!("{}{}", self.suffix_type.prefix(), self.domain.encoded())
+    }
+    pub fn raw(&self) -> String {
+        format!("{}{}", self.suffix_type.prefix(), self.domain.raw())
+    }
+
     pub fn suffix_type(&self) -> &SuffixType { &self.suffix_type }
-    pub fn domain(&self) -> &EncodedDomain { &self.domain }
 
     pub(self) fn new(suffix_type: SuffixType, domain: EncodedDomain) -> Self {
         Self { suffix_type, domain }
@@ -99,13 +102,16 @@ impl Ord for Suffix {
     }
 }
 
-#[derive(Clone, EnumIter, Eq, Ord, PartialEq, PartialOrd, Serialize)]
+#[derive(
+    Clone, Deserialize, EnumIter, Eq,
+    Ord, PartialEq, PartialOrd, Serialize
+)]
 pub enum SuffixType { Exclusion, Normal, Glob }
 
 impl SuffixType {
-    pub const INDEX_AFTER_NORMAL: usize = 2;
+    pub(self) const INDEX_AFTER_NORMAL: usize = 2;
 
-    pub fn prefix(&self) -> &str {
+    pub(self) fn prefix(&self) -> &str {
         match self {
             SuffixType::Glob => "*.",
             SuffixType::Exclusion => "!",

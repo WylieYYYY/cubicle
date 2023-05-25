@@ -103,8 +103,9 @@ fn delete_prompt(container: &Container) -> Context {
 fn container_detail(container: &Container) -> Context {
     let mut context = Context::new();
     context.insert("suffixes", &container.suffixes.iter().map(|suffix| {
-            String::from(suffix.suffix_type().prefix()) + suffix.domain().raw()
-        }).chain(iter::once(String::new())).collect::<Vec<String>>());
+            (suffix.raw(), suffix.encoded())
+        }).chain(iter::once((String::new(), String::new())))
+        .collect::<Vec<(String, String)>>());
     context
 }
 

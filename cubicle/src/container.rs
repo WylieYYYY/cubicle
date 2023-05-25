@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::domain::suffix::Suffix;
 use crate::interop::contextual_identities::{
@@ -8,7 +8,7 @@ use crate::interop::contextual_identities::{
 };
 use crate::util::errors::CustomError;
 
-#[derive(Default, Serialize)]
+#[derive(Default, Deserialize, Serialize)]
 pub struct ContainerOwner {
     #[serde(skip)]
     suffix_id_map: BTreeMap<Suffix, CookieStoreId>,
@@ -51,7 +51,7 @@ impl FromIterator<Container> for ContainerOwner {
     }
 }
 
-#[derive(Serialize)]
+#[derive(Deserialize, Serialize)]
 pub struct Container {
     identity: ContextualIdentity, pub variant: ContainerVariant,
     pub suffixes: BTreeSet<Suffix>
@@ -90,5 +90,5 @@ impl From<ContextualIdentity> for Container {
     }
 }
 
-#[derive(Serialize)]
+#[derive(Deserialize, Serialize)]
 pub enum ContainerVariant { Permanent }

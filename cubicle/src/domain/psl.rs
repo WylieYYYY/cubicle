@@ -3,13 +3,13 @@ use std::io::ErrorKind;
 
 use async_std::io::prelude::*;
 use chrono::naive::NaiveDate;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use super::EncodedDomain;
 use super::suffix::{self, Suffix, SuffixType};
 use crate::util::errors::CustomError;
 
-#[derive(Default, Serialize)]
+#[derive(Default, Deserialize, Serialize)]
 pub struct Psl { last_updated: NaiveDate, set: BTreeSet<Suffix> }
 
 impl Psl {
