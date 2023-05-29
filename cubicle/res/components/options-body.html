@@ -1,0 +1,14 @@
+<section>
+  <h2>Public Suffix List</h2>
+  <p>
+    Public suffixes indicate domains that are shared by multiple owners.
+    It is useful to determine if two domains should share data,
+    and is used for creating isolated temporary containers.
+  </p>
+  <div>
+    <button id="btn-psl-update" {% if psl_no_update %}disabled=""{% endif %}>
+      Update List
+    </button>
+    <span>Last updated: {{psl_last_updated}}</span>
+  </div>
+</section>

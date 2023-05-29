@@ -19,12 +19,14 @@ impl GlobalContext {
     pub async fn from_storage() -> Result<Self, CustomError> {
         let mut stored_version = Version::default();
         storage::get_with_keys(&mut stored_version).await?;
+        let mut context = GlobalContext::default();
         if stored_version == Version::default() {
-            Ok(GlobalContext::default())
+            storage::set_with_keys(&context).await?;
+            storage::set_with_keys(&CURRENT_VERSION).await?;
+            Ok(context)
         } else if stored_version != CURRENT_VERSION {
             Err(CustomError::UnsupportedVersion)
         } else {
-            let mut context = GlobalContext::default();
             storage::get_with_keys(&mut context).await?;
             Ok(context)
         }

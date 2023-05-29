@@ -38,6 +38,11 @@ function message_container_update() {
             view: 'delete_prompt',
             cookie_store_id: selectContainer.value
         }));
+    document.getElementById('btn-options')
+        .addEventListener('click', () => {
+            window.open(browser.runtime.getURL('options.html'));
+            window.close();
+        });
     redirect({view: 'welcome'});
     browser.runtime.sendMessage({
         message_type: 'request_page', view: {

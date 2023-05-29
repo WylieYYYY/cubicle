@@ -1,5 +1,6 @@
 use std::{iter, ops::DerefMut};
 
+use chrono::offset::Utc;
 use serde::{Deserialize, Serialize};
 use strum::IntoEnumIterator;
 use strum_macros::Display;
@@ -22,7 +23,9 @@ pub enum View {
     FetchAllContainers { selected: Option<CookieStoreId> },
     DeletePrompt { cookie_store_id: CookieStoreId },
     UpdateContainer { cookie_store_id: CookieStoreId },
-    ContainerDetail { cookie_store_id: CookieStoreId }
+    ContainerDetail { cookie_store_id: CookieStoreId },
+
+    OptionsBody
 }
 
 impl View {
@@ -55,6 +58,9 @@ impl View {
                 let container = global_context.containers.get(cookie_store_id)
                     .expect("valid ID passed from message");
                 Ok(render_with(container_detail(container), self).await)
+            },
+            OptionsBody => {
+                Ok(render_with(options_body(global_context), self).await)
             }
         }
     }
@@ -106,6 +112,18 @@ fn container_detail(container: &Container) -> Context {
             (suffix.raw(), suffix.encoded())
         }).chain(iter::once((String::new(), String::new())))
         .collect::<Vec<(String, String)>>());
+    context
+}
+
+fn options_body(
+    global_context: &mut impl DerefMut<Target = GlobalContext>
+) -> Context {
+    let mut context = Context::new();
+    let last_updated = global_context.psl.last_updated();
+    context.insert("psl_last_updated", &last_updated);
+    let days_since_update = Utc::now().date_naive()
+        .signed_duration_since(last_updated).num_days();
+    context.insert("psl_no_update", &(days_since_update < 7));
     context
 }
 

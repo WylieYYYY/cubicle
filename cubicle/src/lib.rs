@@ -4,7 +4,6 @@ mod interop;
 mod util;
 mod view;
 
-use std::ops::Deref;
 use std::panic;
 
 use async_std::io::BufReader;
@@ -17,7 +16,7 @@ use web_sys::console;
 
 use crate::domain::EncodedDomain;
 use crate::domain::psl::Psl;
-use crate::interop::{storage, tabs};
+use crate::interop::tabs;
 use crate::interop::fetch::{self, Fetch};
 use crate::util::{message::Message, options::GlobalContext};
 
@@ -34,12 +33,8 @@ async fn main() -> Result<(), JsValue> {
     drop(global_context.fetch_all_containers().await);
     global_context.psl = Psl::from_stream(
         &mut reader, NaiveDate::MIN).await.unwrap();
-    drop(storage::set_with_keys(global_context.deref()).await);
     GlobalContext::from_storage().await.unwrap();
-    console::log_1(&serde_wasm_bindgen::to_value(
-        &global_context.psl.last_updated()).unwrap());
     let exmaple_com = EncodedDomain::try_from("example.com").unwrap();
-    console::log_1(&JsString::from(exmaple_com.encoded()));
     console::log_1(&JsValue::from_f64(global_context.psl.match_suffix(
         exmaple_com).count() as f64));
     Ok(())
