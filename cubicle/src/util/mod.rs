@@ -1,5 +1,4 @@
 pub mod errors;
-pub mod message;
 pub mod options;
 
 use std::collections::{BTreeMap, BTreeSet};
@@ -8,12 +7,20 @@ use std::iter::DoubleEndedIterator;
 use std::ops::RangeBounds;
 
 use base64::prelude::*;
+use serde::Serialize;
 use serde::de::Visitor;
+use wasm_bindgen::JsValue;
 
 pub fn usize_to_u32(value: usize) -> u32 {
     let maybe_truncated = value as u32;
     if value > maybe_truncated as usize { u32::MAX }
     else { maybe_truncated }
+}
+
+pub fn to_jsvalue<T>(value: &T) -> JsValue
+where T: Serialize {
+    serde_wasm_bindgen::to_value(value)
+        .expect("serialization fail unlikely")
 }
 
 pub trait KeyRangeExt<'a, K>

@@ -1,7 +1,7 @@
 use std::{iter, ops::DerefMut};
 
 use chrono::offset::Utc;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use strum::IntoEnumIterator;
 use strum_macros::Display;
 use tera::{Context, Tera};
@@ -14,7 +14,7 @@ use crate::interop::contextual_identities::{
 use crate::interop::tabs;
 use crate::util::errors::CustomError;
 
-#[derive(Deserialize, Display, Serialize)]
+#[derive(Deserialize, Display)]
 #[serde(rename_all="snake_case", tag="view")]
 #[strum(serialize_all="kebab-case")]
 pub enum View {

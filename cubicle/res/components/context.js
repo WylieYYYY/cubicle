@@ -25,12 +25,13 @@ export default function redirect(viewEnum) {
     });
 }
 
-export function state_update_redirect(messageEnum) {
+export function state_update_redirect(messageType, messageEnum) {
     const mainElement = document.getElementsByTagName('main')[0];
     mainElement.replaceChildren();
     const selectContainer = document.getElementById('select-container');
     selectContainer.disabled = true;
-    browser.runtime.sendMessage(messageEnum).then((html) => {
+    const message = {message_type: messageType, action: messageEnum};
+    browser.runtime.sendMessage(message).then((html) => {
         selectContainer.innerHTML = html;
         selectContainer.disabled = false;
     });

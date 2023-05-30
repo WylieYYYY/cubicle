@@ -1,8 +1,8 @@
 mod container;
 mod domain;
 mod interop;
+mod message;
 mod util;
-mod view;
 
 use std::panic;
 
@@ -18,7 +18,8 @@ use crate::domain::EncodedDomain;
 use crate::domain::psl::Psl;
 use crate::interop::tabs;
 use crate::interop::fetch::{self, Fetch};
-use crate::util::{message::Message, options::GlobalContext};
+use crate::message::Message;
+use crate::util::options::GlobalContext;
 
 #[wasm_bindgen(start)]
 async fn main() -> Result<(), JsValue> {

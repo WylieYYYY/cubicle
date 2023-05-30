@@ -21,8 +21,8 @@ impl GlobalContext {
         storage::get_with_keys(&mut stored_version).await?;
         let mut context = GlobalContext::default();
         if stored_version == Version::default() {
-            storage::set_with_keys(&context).await?;
-            storage::set_with_keys(&CURRENT_VERSION).await?;
+            storage::set_with_serde_keys(&context).await?;
+            storage::set_with_serde_keys(&CURRENT_VERSION).await?;
             Ok(context)
         } else if stored_version != CURRENT_VERSION {
             Err(CustomError::UnsupportedVersion)

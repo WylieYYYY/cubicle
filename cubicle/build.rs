@@ -11,7 +11,7 @@ fn main() {
 
     if !build_dir.exists() { fs::create_dir(build_dir).unwrap(); }
     for entry in fs::read_dir(resource_dir).unwrap() {
-        fs_extra::copy_items(&vec![entry.unwrap().path()],
+        fs_extra::copy_items(&[entry.unwrap().path()],
             build_dir, &CopyOptions::default().overwrite(true)).unwrap();
     }
 

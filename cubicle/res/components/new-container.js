@@ -14,8 +14,8 @@ function message_submit_identity_details(event) {
     for (const [key, value] of new FormData(event.target).entries()) {
         identityDetails[key] = value;
     }
-    state_update_redirect({
-        message_type: 'submit_identity_details',
+    state_update_redirect('container_action', {
+        action: 'submit_identity_details',
         cookie_store_id: cookieStoreId, details: identityDetails
     });
 }
