@@ -40,6 +40,13 @@ struct SharedState {
 }
 
 impl Fetch {
+    pub async fn get_stream(url: &str) -> Result<Self, CustomError> {
+        Self::try_from(Response::from(get(url).await?).body()
+            .ok_or(CustomError::FailedFetchRequest {
+                message: String::from("response has no body")
+            })?)
+    }
+
     fn read_to_buffer(self: Pin<&mut Self>, cx: &mut Context<'_>, size: usize)
     -> Poll<io::Result<FetchState>> {
         let Some(mut state) = self.state.try_lock() else {
@@ -112,14 +119,14 @@ impl Read for Fetch {
 }
 
 impl TryFrom<ReadableStream> for Fetch {
-    type Error = JsValue;
+    type Error = CustomError;
     fn try_from(value: ReadableStream) -> Result<Self, Self::Error> {
         let mut reader_options = ReadableStreamGetReaderOptions::new();
         reader_options.mode(ReadableStreamReaderMode::Byob);
         let reader = value.get_reader_with_options(&reader_options)
-            .dyn_into().or(Err(JsError::from(CustomError::StandardMismatch {
+            .dyn_into().or(Err(CustomError::StandardMismatch {
                 message: String::from("a BYOB reader is expected")
-            })))?;
+            }))?;
         let state = Arc::new(Mutex::new(SharedState::default()));
         Ok(Self {
             reader, resolve_read_then: Self::read_thens(state.clone(), true),
@@ -128,14 +135,19 @@ impl TryFrom<ReadableStream> for Fetch {
     }
 }
 
-pub async fn get(url: &str) -> Result<Response, JsValue> {
+pub async fn get(url: &str) -> Result<Response, CustomError> {
     let mut connection_options = RequestInit::new();
     connection_options.method("GET").mode(RequestMode::Cors);
-    let request = Request::new_with_str_and_init(url, &connection_options)?;
-    let window = web_sys::window().ok_or(JsError::from(
-        CustomError::StandardMismatch {
-            message: String::from("window should exist in page")
+    let request = Request::new_with_str_and_init(url, &connection_options)
+        .or(Err(CustomError::FailedFetchRequest {
+            message: String::from("credentials in URL not supported")
         }))?;
-    let resp = JsFuture::from(window.fetch_with_request(&request)).await?;
+    let window = web_sys::window().ok_or(CustomError::StandardMismatch {
+        message: String::from("window should exist in page")
+    })?;
+    let resp = JsFuture::from(window.fetch_with_request(&request)).await
+        .or(Err(CustomError::FailedFetchRequest {
+            message: String::from("network error")
+        }))?;
     Ok(Response::from(resp))
 }

@@ -6,18 +6,14 @@ mod util;
 
 use std::panic;
 
-use async_std::io::BufReader;
 use async_std::sync::Mutex;
-use chrono::NaiveDate;
 use js_sys::JsString;
 use once_cell::sync::Lazy;
 use wasm_bindgen::prelude::*;
 use web_sys::console;
 
 use crate::domain::EncodedDomain;
-use crate::domain::psl::Psl;
 use crate::interop::tabs;
-use crate::interop::fetch::{self, Fetch};
 use crate::message::Message;
 use crate::util::options::GlobalContext;
 
@@ -27,14 +23,12 @@ async fn main() -> Result<(), JsValue> {
     let tab_creator = Closure::new(tabs::create_tab);
     interop::add_runtime_listener("onInstalled", &tab_creator);
     tab_creator.forget();
-    let path = interop::prepend_extension_base_url("public_suffix_list.dat");
-    let mut reader = BufReader::new(Fetch::try_from(
-        fetch::get(&path).await.unwrap().body().unwrap()).unwrap());
     let mut global_context = GLOBAL_CONTEXT.lock().await;
+    *global_context = GlobalContext::from_storage().await.unwrap();
+    if global_context.psl.len() == 0 {
+        Message::PslUpdate { url: None }.act(&mut global_context).await.unwrap();
+    }
     drop(global_context.fetch_all_containers().await);
-    global_context.psl = Psl::from_stream(
-        &mut reader, NaiveDate::MIN).await.unwrap();
-    GlobalContext::from_storage().await.unwrap();
     let exmaple_com = EncodedDomain::try_from("example.com").unwrap();
     console::log_1(&JsValue::from_f64(global_context.psl.match_suffix(
         exmaple_com).count() as f64));

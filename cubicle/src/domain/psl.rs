@@ -36,5 +36,6 @@ impl Psl {
         suffix::match_suffix(&self.set, domain)
     }
 
+    pub fn len(&self) -> usize { self.set.len() }
     pub fn last_updated(&self) -> NaiveDate { self.last_updated }
 }

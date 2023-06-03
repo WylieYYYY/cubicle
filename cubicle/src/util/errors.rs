@@ -14,6 +14,8 @@ pub enum CustomError {
     FailedStorageOperation { verb_prep: String },
     #[error("failed to fetch the active tab")]
     FailedFetchActiveTab,
+    #[error("failed to fetch, {message}")]
+    FailedFetchRequest { message: String },
 
     #[error("unsupported version")]
     UnsupportedVersion,
