@@ -9,6 +9,7 @@ use std::ops::RangeBounds;
 use base64::prelude::*;
 use serde::Serialize;
 use serde::de::Visitor;
+use serde_wasm_bindgen::Serializer;
 use wasm_bindgen::JsValue;
 
 pub fn usize_to_u32(value: usize) -> u32 {
@@ -18,8 +19,8 @@ pub fn usize_to_u32(value: usize) -> u32 {
 }
 
 pub fn to_jsvalue<T>(value: &T) -> JsValue
-where T: Serialize {
-    serde_wasm_bindgen::to_value(value)
+where T: Serialize + ?Sized {
+    value.serialize(&Serializer::json_compatible())
         .expect("serialization fail unlikely")
 }
 

@@ -28,8 +28,8 @@ extern "C" {
 #[derive(Deserialize, Serialize)]
 #[serde(rename_all="camelCase")]
 pub struct ContextualIdentity {
-    #[serde(deserialize_with="deserialize_inner_id",
-        serialize_with="serialize_inner_id")]
+    #[serde(deserialize_with="CookieStoreId::deserialize_inner",
+        serialize_with="CookieStoreId::serialize_inner")]
     cookie_store_id: CookieStoreId,
     color: IdentityColor, _color_code: String, icon: IdentityIcon,
     _icon_url: String, name: String
@@ -88,20 +88,6 @@ impl Display for ContextualIdentity {
     }
 }
 
-fn deserialize_inner_id<'de, D>(deserializer: D)
--> Result<CookieStoreId, D::Error>
-where D: Deserializer<'de> {
-    Ok(CookieStoreId {
-        inner: deserializer.deserialize_string(SingleStringVisitor)?
-    })
-}
-
-fn serialize_inner_id<S>(cookie_store_id: &CookieStoreId, serializer: S)
--> Result<S::Ok, S::Error>
-where S: Serializer {
-    serializer.serialize_str(&cookie_store_id.inner)
-}
-
 #[derive(Clone, Eq, Hash, PartialEq)]
 pub struct CookieStoreId { inner: String }
 
@@ -130,6 +116,17 @@ impl CookieStoreId {
                 verb: String::from("delete")
             })
         } else { Ok(()) }
+    }
+
+    pub fn deserialize_inner<'de, D>(deserializer: D) -> Result<Self, D::Error>
+    where D: Deserializer<'de> {
+        Ok(Self {
+            inner: deserializer.deserialize_string(SingleStringVisitor)?
+        })
+    }
+    pub fn serialize_inner<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where S: Serializer {
+        serializer.serialize_str(&self.inner)
     }
 }
 

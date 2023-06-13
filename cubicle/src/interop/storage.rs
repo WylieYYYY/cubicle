@@ -3,8 +3,8 @@ use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
 
-use crate::interop::{self, MAP_SERIALIZER};
-use crate::util::errors::CustomError;
+use crate::interop;
+use crate::util::{self, errors::CustomError};
 
 #[wasm_bindgen]
 extern "C" {
@@ -16,9 +16,7 @@ extern "C" {
 
 pub async fn get_with_keys<T>(keys: &mut T) -> Result<(), CustomError>
 where T: for <'de> Deserialize<'de> + Serialize {
-    let passed_keys = keys.serialize(MAP_SERIALIZER)
-        .expect("serialization fail unlikely");
-    let got = JsFuture::from(storage_get(&passed_keys)).await
+    let got = JsFuture::from(storage_get(&util::to_jsvalue(keys))).await
         .or(Err(CustomError::FailedStorageOperation {
             verb_prep: String::from("load from")
         }))?;
@@ -28,9 +26,7 @@ where T: for <'de> Deserialize<'de> + Serialize {
 
 pub async fn set_with_serde_keys<T>(keys: &T) -> Result<(), CustomError>
 where T: Serialize {
-    let keys = keys.serialize(MAP_SERIALIZER)
-        .expect("serialization fail unlikely");
-    set_with_value_keys(&keys).await
+    set_with_value_keys(&util::to_jsvalue(keys)).await
 }
 
 pub async fn set_with_value_keys(keys: &JsValue) -> Result<(), CustomError> {

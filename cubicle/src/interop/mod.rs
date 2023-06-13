@@ -8,13 +8,12 @@ use std::any;
 
 use js_sys::{JsString, Promise, Reflect};
 use serde::Deserialize;
-use serde_wasm_bindgen::Serializer;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
 
 use crate::util::errors::CustomError;
 
-#[wasm_bindgen(raw_module = "./background.js")]
+#[wasm_bindgen(raw_module="./background.js")]
 extern "C" {
     #[wasm_bindgen(js_name="addRuntimeListener")]
     pub fn add_runtime_listener(event: &str,
@@ -50,6 +49,3 @@ where T: for <'de> Deserialize<'de> {
         message: format!("`{}` expected", any::type_name::<T>())
     }))?)
 }
-
-pub const MAP_SERIALIZER: &Serializer = &Serializer::new()
-    .serialize_maps_as_objects(true);

@@ -16,6 +16,8 @@ pub enum CustomError {
     FailedFetchActiveTab,
     #[error("failed to fetch, {message}")]
     FailedFetchRequest { message: String },
+    #[error("failed to {verb} tab")]
+    FailedTabOperation { verb: String },
 
     #[error("unsupported version")]
     UnsupportedVersion,

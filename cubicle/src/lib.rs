@@ -13,16 +13,13 @@ use wasm_bindgen::prelude::*;
 use web_sys::console;
 
 use crate::domain::EncodedDomain;
-use crate::interop::tabs;
+use crate::interop::tabs::{TabId, TabProperties};
 use crate::message::Message;
-use crate::util::options::GlobalContext;
+use crate::util::{errors::CustomError, options::GlobalContext};
 
 #[wasm_bindgen(start)]
 async fn main() -> Result<(), JsValue> {
     panic::set_hook(Box::new(console_error_panic_hook::hook));
-    let tab_creator = Closure::new(tabs::create_tab);
-    interop::add_runtime_listener("onInstalled", &tab_creator);
-    tab_creator.forget();
     let mut global_context = GLOBAL_CONTEXT.lock().await;
     *global_context = GlobalContext::from_storage().await.unwrap();
     if global_context.psl.len() == 0 {
@@ -45,4 +42,22 @@ pub async fn on_message(message: JsValue) -> Result<JsString, JsError> {
     message.act(&mut GLOBAL_CONTEXT.lock().await).await
         .map(|html| JsString::from(html))
         .map_err(|error| JsError::new(&error.to_string()))
+}
+
+#[wasm_bindgen(js_name="onTabUpdated")]
+pub async fn on_tab_updated(tab_id: isize, tab_properties: JsValue)
+-> Result<(), JsError> {
+    {
+        let tab_id = TabId::new(tab_id);
+
+        tab_id.stop_loading().await;
+        let tab_properties = interop::cast_or_standard_mismatch
+            ::<TabProperties>(tab_properties)?;
+        if true {
+            tab_id.reload_tab().await
+        } else {
+            tab_properties.new_tab().await?;
+            tab_id.close_tab().await
+        }
+    }.map_err(|error: CustomError| JsError::new(&error.to_string()))
 }

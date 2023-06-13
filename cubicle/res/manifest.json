@@ -5,6 +5,7 @@
 	"author": "WylieYYYY",
 	"manifest_version": 2,
 	"permissions": [
+		"<all_urls>",
 		"contextualIdentities",
 		"cookies",
 		"storage"
