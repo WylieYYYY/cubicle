@@ -32,8 +32,11 @@ impl Psl {
     }
 
     pub fn match_suffix(&self, domain: EncodedDomain)
-    -> impl Iterator<Item = (EncodedDomain, SuffixType)> + '_ {
-        suffix::match_suffix(&self.set, domain)
+    -> Option<EncodedDomain> {
+        suffix::match_suffix(&self.set, domain).find_map(|(domain, suffix)| {
+            let is_exclusion = *suffix.suffix_type() == SuffixType::Exclusion;
+            if is_exclusion { None } else { Some(domain) }
+        })
     }
 
     pub fn len(&self) -> usize { self.set.len() }

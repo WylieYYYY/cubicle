@@ -34,6 +34,7 @@ features = [
   "ReadableStreamDefaultReader",
   "ReadableStreamGetReaderOptions",
   "ReadableStreamReaderMode",
+  "Url",
 ]
 
 [build-dependencies]

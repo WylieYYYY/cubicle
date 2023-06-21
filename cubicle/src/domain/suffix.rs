@@ -9,7 +9,7 @@ use super::EncodedDomain;
 use crate::util::{errors::CustomError, KeyRangeExt};
 
 pub fn match_suffix<'a, T>(set: &'a T, domain: EncodedDomain)
--> impl Iterator<Item = (EncodedDomain, SuffixType)> + 'a
+-> impl Iterator<Item = (EncodedDomain, Suffix)> + 'a
 where T: KeyRangeExt<'a, Suffix> + 'a {
     let mut domain = Some(domain);
     let domain_iter = iter::repeat_with(move || {
@@ -17,8 +17,7 @@ where T: KeyRangeExt<'a, Suffix> + 'a {
         mem::replace(&mut domain, parent)
     }).map_while(convert::identity);
     domain_iter.filter_map(|domain| {
-        match_suffix_exact(set, &domain)
-            .map(|suffix| (domain, suffix.suffix_type().clone()))
+        match_suffix_exact(set, &domain).map(|suffix| (domain, suffix))
     })
 }
 

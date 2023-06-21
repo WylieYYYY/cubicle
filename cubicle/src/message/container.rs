@@ -3,8 +3,9 @@ use std::ops::DerefMut;
 use serde::Deserialize;
 
 use crate::container::{Container, ContainerVariant};
+use crate::context::GlobalContext;
 use crate::interop::contextual_identities::{CookieStoreId, IdentityDetails};
-use crate::util::{errors::CustomError, options::GlobalContext};
+use crate::util::errors::CustomError;
 
 #[derive(Deserialize)]
 #[serde(rename_all="snake_case", tag="action")]

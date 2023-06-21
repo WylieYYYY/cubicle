@@ -2,7 +2,8 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use serde::{Deserialize, Serialize};
 
-use crate::domain::suffix::Suffix;
+use crate::domain::EncodedDomain;
+use crate::domain::suffix::{self, Suffix};
 use crate::interop::contextual_identities::{
     ContextualIdentity, CookieStoreId, IdentityDetails, IdentityDetailsProvider
 };
@@ -37,6 +38,17 @@ impl ContainerOwner {
         self.id_container_map.remove(cookie_store_id)
     }
 
+    pub fn match_container(&self, domain: EncodedDomain)
+    -> Option<ContainerMatch> {
+        let (matched_domain, suffix) = suffix::match_suffix(
+            &self.suffix_id_map, domain).next()?;
+        let container_id = self.suffix_id_map.get(&suffix)
+            .expect("suffix matched");
+        let container = self.id_container_map.get(&container_id)
+            .expect("suffix matched");
+        Some(ContainerMatch { container, matched_domain, suffix })
+    }
+
     pub fn iter(&self) -> impl Iterator<Item = &Container> {
         self.id_container_map.values()
     }
@@ -49,6 +61,12 @@ impl FromIterator<Container> for ContainerOwner {
         for container in iter { instance.insert(container); }
         instance
     }
+}
+
+pub struct ContainerMatch<'a> {
+    pub container: &'a Container,
+    pub matched_domain: EncodedDomain,
+    pub suffix: Suffix
 }
 
 #[derive(Deserialize, Serialize)]

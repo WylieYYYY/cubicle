@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 
 use self::container::ContainerAction;
 use self::view::View;
-use crate::GlobalContext;
+use crate::context::GlobalContext;
 use crate::domain::psl::Psl;
 use crate::interop::{self, fetch::Fetch, storage};
 use crate::util::{self, errors::CustomError};

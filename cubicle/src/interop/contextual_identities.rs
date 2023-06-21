@@ -130,6 +130,12 @@ impl CookieStoreId {
     }
 }
 
+impl Default for CookieStoreId {
+    fn default() -> Self {
+        Self { inner: String::from("firefox-default") }
+    }
+}
+
 impl<'de> Deserialize<'de> for CookieStoreId {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where D: Deserializer<'de> {

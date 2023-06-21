@@ -7,11 +7,11 @@ use strum_macros::Display;
 use tera::{Context, Tera};
 
 use crate::container::Container;
-use crate::{interop, GlobalContext};
+use crate::context::GlobalContext;
+use crate::interop::{self, tabs};
 use crate::interop::contextual_identities::{
     CookieStoreId, IdentityIcon, IdentityColor, IdentityDetailsProvider
 };
-use crate::interop::tabs;
 use crate::util::errors::CustomError;
 
 #[derive(Deserialize, Display)]

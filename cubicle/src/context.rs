@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::container::{Container, ContainerOwner};
+use crate::preferences::Preferences;
 use crate::domain::psl::Psl;
 use crate::interop::contextual_identities::{
     ContextualIdentity, CookieStoreId, IdentityDetails, IdentityDetailsProvider
@@ -12,7 +13,8 @@ use crate::util::errors::CustomError;
 pub struct GlobalContext {
     #[serde(flatten)]
     pub containers: ContainerOwner,
-    pub psl: Psl
+    pub psl: Psl,
+    pub preferences: Preferences
 }
 
 impl GlobalContext {

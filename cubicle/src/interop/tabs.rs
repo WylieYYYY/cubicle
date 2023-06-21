@@ -29,8 +29,10 @@ pub struct TabProperties {
     active: bool,
     #[serde(deserialize_with="CookieStoreId::deserialize_inner",
         serialize_with="CookieStoreId::serialize_inner")]
-    cookie_store_id: CookieStoreId,
+    pub cookie_store_id: CookieStoreId,
     discarded: Option<bool>,
+    #[serde(skip_serializing)]
+    id: isize,
     index: usize,
     #[serde(rename(serialize="muted"))]
     muted_info: MutedInfo,
@@ -43,16 +45,19 @@ pub struct TabProperties {
 }
 
 impl TabProperties {
-    pub async fn new_tab(&self) -> Result<Self, CustomError> {
-        interop::cast_or_standard_mismatch(JsFuture::from(
-            tab_create(util::to_jsvalue(self))).await.or(Err(
+    pub fn url(&self) -> &Option<String> { &self.url }
+
+    async fn new_tab(&self) -> Result<TabId, CustomError> {
+        let new_properties = interop::cast_or_standard_mismatch::<Self>(
+            JsFuture::from(tab_create(util::to_jsvalue(self))).await.or(Err(
             CustomError::FailedTabOperation {
                 verb: String::from("create")
-            }))?)
+            }))?)?;
+        Ok(TabId::new(new_properties.id))
     }
 }
 
-#[derive(Clone, Deserialize, Serialize)]
+#[derive(Clone, Deserialize, Eq, Hash, PartialEq, Serialize)]
 #[serde(transparent)]
 pub struct TabId { inner: isize }
 
@@ -60,18 +65,29 @@ impl TabId {
     pub fn new(tab_id: isize) -> Self {
         Self { inner: tab_id }
     }
-    pub async fn close_tab(&self) -> Result<(), CustomError> {
-        interop::cast_or_standard_mismatch(JsFuture::from(
-            tab_remove(self.inner)).await.or(Err(
-            CustomError::FailedTabOperation {
-                verb: String::from("remove")
-            }))?)
-    }
     pub async fn stop_loading(&self) {
         let details = util::to_jsvalue(&HashMap::from([
             ("code", "window.stop();"), ("runAt", "document_start")
         ]));
         drop(JsFuture::from(tab_execute_js(self.inner, details)).await);
+    }
+
+    pub async fn enter<F>(
+        &self, cookie_store_id: CookieStoreId,
+        mut tab_properties: TabProperties, register_tab: F
+    ) -> Result<(), CustomError>
+    where F: FnOnce(TabId) {
+        tab_properties.cookie_store_id = cookie_store_id;
+        register_tab(tab_properties.new_tab().await?);
+        self.close_tab().await
+    }
+
+    async fn close_tab(&self) -> Result<(), CustomError> {
+        interop::cast_or_standard_mismatch(JsFuture::from(
+            tab_remove(self.inner)).await.or(Err(
+            CustomError::FailedTabOperation {
+                verb: String::from("remove")
+            }))?)
     }
     pub async fn reload_tab(&self) -> Result<(), CustomError> {
         interop::cast_or_standard_mismatch(JsFuture::from(

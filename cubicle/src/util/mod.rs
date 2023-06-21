@@ -1,5 +1,4 @@
 pub mod errors;
-pub mod options;
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::{Formatter, Result as FmtResult};

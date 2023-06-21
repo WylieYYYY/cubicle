@@ -10,7 +10,9 @@ use js_sys::{JsString, Promise, Reflect};
 use serde::Deserialize;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
+use web_sys::Url;
 
+use crate::domain::EncodedDomain;
 use crate::util::errors::CustomError;
 
 #[wasm_bindgen(raw_module="./background.js")]
@@ -32,6 +34,15 @@ pub async fn fetch_extension_file(path: &str) -> String {
         .expect("standard does not define synchronous errors")).await
         .expect("assume consume body successful").as_string()
         .expect("body must be a valid string")
+}
+
+pub fn url_to_domain(url: &str) -> Result<EncodedDomain, CustomError> {
+    let hostname = Url::new(url).or(Err(CustomError::StandardMismatch {
+        message: String::from("url should be validated")
+    }))?.hostname();
+    EncodedDomain::try_from(&*hostname).or(Err(CustomError::StandardMismatch {
+        message: String::from("domain should be validated")
+    }))
 }
 
 pub fn get_or_standard_mismatch(target: &JsValue, key: &str)
