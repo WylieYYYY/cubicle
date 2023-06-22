@@ -40,13 +40,14 @@ impl ContainerOwner {
 
     pub fn match_container(&self, domain: EncodedDomain)
     -> Option<ContainerMatch> {
-        let (matched_domain, suffix) = suffix::match_suffix(
-            &self.suffix_id_map, domain).next()?;
-        let container_id = self.suffix_id_map.get(&suffix)
-            .expect("suffix matched");
-        let container = self.id_container_map.get(&container_id)
-            .expect("suffix matched");
-        Some(ContainerMatch { container, matched_domain, suffix })
+        suffix::match_suffix(&self.suffix_id_map, domain).find_map(
+            |(matched_domain, suffix)| {
+            let container_id = self.suffix_id_map.get(&suffix)
+                .expect("suffix matched");
+            self.id_container_map.get(&container_id).map(|container| {
+                ContainerMatch { container, matched_domain, suffix }
+            })
+        })
     }
 
     pub fn iter(&self) -> impl Iterator<Item = &Container> {
@@ -76,10 +77,11 @@ pub struct Container {
 }
 
 impl Container {
-    pub async fn create(details: IdentityDetails, variant: ContainerVariant)
+    pub async fn create(details: IdentityDetails,
+        variant: ContainerVariant, suffixes: BTreeSet<Suffix>)
     -> Result<Self, CustomError> {
         let identity = ContextualIdentity::create(details).await?;
-        Ok(Self { identity, variant, suffixes: BTreeSet::default() })
+        Ok(Self { identity, variant, suffixes })
     }
     pub async fn update(&mut self, details: IdentityDetails)
     -> Result<(), CustomError> {
@@ -109,4 +111,6 @@ impl From<ContextualIdentity> for Container {
 }
 
 #[derive(Deserialize, Serialize)]
-pub enum ContainerVariant { Permanent }
+pub enum ContainerVariant {
+    Permanent, Temporary { tab_count: usize }
+}

@@ -1,3 +1,4 @@
+use std::collections::BTreeSet;
 use std::ops::DerefMut;
 
 use serde::Deserialize;
@@ -34,7 +35,8 @@ impl ContainerAction {
                     },
                     None => {
                         let container = Container::create(details,
-                            ContainerVariant::Permanent).await?;
+                            ContainerVariant::Permanent,
+                            BTreeSet::default()).await?;
                         let cookie_store_id = container
                             .cookie_store_id().clone();
                         global_context.containers.insert(container);

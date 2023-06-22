@@ -28,7 +28,6 @@ wasm-bindgen-futures = "0.4.34"
 version = "0.3.61"
 features = [
   "Headers", "Request", "RequestInit", "RequestMode", "Response", "Window",
-  "console",
   "ReadableStream",
   "ReadableStreamByobReader",
   "ReadableStreamDefaultReader",

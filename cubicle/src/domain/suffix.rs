@@ -17,15 +17,18 @@ where T: KeyRangeExt<'a, Suffix> + 'a {
         mem::replace(&mut domain, parent)
     }).map_while(convert::identity);
     domain_iter.filter_map(|domain| {
-        match_suffix_exact(set, &domain).map(|suffix| (domain, suffix))
+        match_suffix_exact(set, &domain.parent()?)
+            .map(|suffix| (domain, suffix))
     })
 }
 
 fn match_suffix_exact<'a, T>(set: &'a T, domain: &EncodedDomain)
 -> Option<Suffix>
 where T: KeyRangeExt<'a, Suffix> + 'a {
-    let start = Suffix::new(SuffixType::Exclusion, domain.tld());
     let end = Suffix::new(SuffixType::Normal, domain.clone());
+    let start = if let Some(parent) = domain.parent() {
+        Suffix::new(SuffixType::Glob, parent)
+    } else { end.clone() };
     let mut search_range = set.key_range(start..=end);
     search_range.rfind(|suffix| suffix.match_ordering(domain).is_eq()).cloned()
 }
@@ -34,6 +37,10 @@ where T: KeyRangeExt<'a, Suffix> + 'a {
 pub struct Suffix { suffix_type: SuffixType, domain: EncodedDomain }
 
 impl Suffix {
+    pub fn new(suffix_type: SuffixType, domain: EncodedDomain) -> Self {
+        Self { suffix_type, domain }
+    }
+
     pub fn match_ordering(&self, domain: &EncodedDomain) -> Ordering {
         let self_reversed = self.domain.reverse();
         let globbed: Box<dyn Iterator<Item = &str>> = {
@@ -53,10 +60,6 @@ impl Suffix {
     }
 
     pub fn suffix_type(&self) -> &SuffixType { &self.suffix_type }
-
-    pub(self) fn new(suffix_type: SuffixType, domain: EncodedDomain) -> Self {
-        Self { suffix_type, domain }
-    }
 }
 
 impl TryFrom<&str> for Suffix {

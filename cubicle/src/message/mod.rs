@@ -5,15 +5,14 @@ use std::ops::DerefMut;
 
 use async_std::io::BufReader;
 use chrono::Utc;
-use js_sys::{Object, Reflect};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
 use self::container::ContainerAction;
 use self::view::View;
 use crate::context::GlobalContext;
 use crate::domain::psl::Psl;
 use crate::interop::{self, fetch::Fetch, storage};
-use crate::util::{self, errors::CustomError};
+use crate::util::errors::CustomError;
 
 #[derive(Deserialize)]
 #[serde(rename_all="snake_case", tag="message_type")]
@@ -34,7 +33,7 @@ impl Message {
                 let cookie_store_id = action.act(global_context).await?;
                 let existing_container = global_context.containers
                     .get(&cookie_store_id);
-                store_single_entry(&cookie_store_id,
+                storage::store_single_entry(&cookie_store_id,
                     &existing_container).await?;
                 Ok(View::FetchAllContainers {
                     selected: existing_container.and(Some(cookie_store_id))
@@ -48,21 +47,10 @@ impl Message {
                 let new_date = Utc::now().date_naive();
                 global_context.psl = Psl::from_stream(
                     &mut reader, new_date).await.unwrap();
-                store_single_entry(&String::from("psl"),
+                storage::store_single_entry("psl",
                     &global_context.psl).await?;
                 Ok(new_date.to_string())
             }
         }
     }
-}
-
-async fn store_single_entry<K, V>(key: &K, value: &V)
--> Result<(), CustomError>
-where K: Serialize, V: Serialize {
-    let keys = Object::new();
-    Reflect::set(&keys, &util::to_jsvalue(key),
-        &util::to_jsvalue(value))
-        .expect("inline construction");
-    storage::set_with_value_keys(&keys).await?;
-    Ok(())
 }

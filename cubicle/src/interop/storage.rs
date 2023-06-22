@@ -1,4 +1,4 @@
-use js_sys::Promise;
+use js_sys::{Object, Promise, Reflect};
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
@@ -34,5 +34,16 @@ pub async fn set_with_value_keys(keys: &JsValue) -> Result<(), CustomError> {
         .or(Err(CustomError::FailedStorageOperation {
             verb_prep: String::from("store to")
         }))?;
+    Ok(())
+}
+
+pub async fn store_single_entry<K, V>(key: &K, value: &V)
+-> Result<(), CustomError>
+where K: Serialize + ?Sized, V: Serialize {
+    let keys = Object::new();
+    Reflect::set(&keys, &util::to_jsvalue(key),
+        &util::to_jsvalue(value))
+        .expect("inline construction");
+    set_with_value_keys(&keys).await?;
     Ok(())
 }

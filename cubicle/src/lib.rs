@@ -13,10 +13,10 @@ use async_std::sync::Mutex;
 use js_sys::JsString;
 use once_cell::sync::Lazy;
 use wasm_bindgen::prelude::*;
-use web_sys::console;
 
 use crate::context::GlobalContext;
 use crate::domain::EncodedDomain;
+use crate::interop::contextual_identities::CookieStoreId;
 use crate::interop::tabs::{TabId, TabProperties};
 use crate::message::Message;
 use crate::util::errors::CustomError;
@@ -30,9 +30,6 @@ async fn main() -> Result<(), JsValue> {
         Message::PslUpdate { url: None }.act(&mut global_context).await.unwrap();
     }
     drop(global_context.fetch_all_containers().await);
-    let exmaple_com = EncodedDomain::try_from("example.com").unwrap();
-    console::log_1(&JsValue::from_bool(global_context.psl.match_suffix(
-        exmaple_com).is_some()));
     Ok(())
 }
 
@@ -55,35 +52,43 @@ pub async fn on_tab_updated(tab_id: isize, tab_properties: JsValue)
 -> Result<(), JsError> {
     {
         let tab_id = TabId::new(tab_id);
-
         let tab_properties = interop::cast_or_standard_mismatch
             ::<TabProperties>(tab_properties)?;
-        let mut managed_tabs = MANAGED_TABS.lock().await;
 
-        let Some(new_url) = tab_properties.url() else { return Ok(()); };
-        let new_domain = interop::url_to_domain(&new_url)?;
-        let old_domain = managed_tabs.insert(tab_id.clone(),
-            new_domain.clone());
-        if old_domain.map_or(false, |old_domain| old_domain == new_domain) {
-            return Ok(());
-        }
-
+        let Some(new_domain) = tab_new_domain(tab_id.clone(),
+            &tab_properties).await else { return Ok(()); };
         tab_id.stop_loading().await;
-        let registered_new_domain = new_domain.clone();
-        let register_tab = move |new_tab_id| {
-            managed_tabs.insert(new_tab_id, registered_new_domain);
-        };
 
-        let global_context = GLOBAL_CONTEXT.lock().await;
+        let mut global_context = GLOBAL_CONTEXT.lock().await;
         let cookie_store_id = global_context.preferences.assign_strategy
-            .match_container(&global_context.containers, new_domain);
+            .clone().match_container(&mut global_context, new_domain.clone()).await?;
         drop(global_context);
 
-        if cookie_store_id == tab_properties.cookie_store_id {
-            register_tab(tab_id.clone());
-            tab_id.reload_tab().await
-        } else {
-            tab_id.enter(cookie_store_id, tab_properties, register_tab).await
-        }
+        assign_tab(tab_id, tab_properties, cookie_store_id, new_domain).await
     }.map_err(|error: CustomError| JsError::new(&error.to_string()))
+}
+
+async fn tab_new_domain(tab_id: TabId, tab_properties: &TabProperties)
+-> Option<EncodedDomain> {
+    let new_url = tab_properties.url().as_ref()?;
+    let new_domain = interop::url_to_domain(&new_url).ok()?;
+    let old_domain = MANAGED_TABS.lock().await.insert(tab_id,
+        new_domain.clone());
+    if old_domain.map_or(true, |old_domain| old_domain != new_domain) {
+        Some(new_domain)
+    } else { None }
+}
+
+async fn assign_tab(tab_id: TabId, mut tab_properties: TabProperties,
+    cookie_store_id: CookieStoreId, new_domain: EncodedDomain)
+-> Result<(), CustomError> {
+    if cookie_store_id == tab_properties.cookie_store_id {
+        MANAGED_TABS.lock().await.insert(tab_id.clone(), new_domain);
+        tab_id.reload_tab().await
+    } else {
+        tab_properties.cookie_store_id = cookie_store_id;
+        let new_tab_id = tab_properties.new_tab().await?;
+        MANAGED_TABS.lock().await.insert(new_tab_id, new_domain);
+        tab_id.close_tab().await
+    }
 }

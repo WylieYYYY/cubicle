@@ -47,7 +47,7 @@ pub struct TabProperties {
 impl TabProperties {
     pub fn url(&self) -> &Option<String> { &self.url }
 
-    async fn new_tab(&self) -> Result<TabId, CustomError> {
+    pub async fn new_tab(&self) -> Result<TabId, CustomError> {
         let new_properties = interop::cast_or_standard_mismatch::<Self>(
             JsFuture::from(tab_create(util::to_jsvalue(self))).await.or(Err(
             CustomError::FailedTabOperation {
@@ -71,18 +71,7 @@ impl TabId {
         ]));
         drop(JsFuture::from(tab_execute_js(self.inner, details)).await);
     }
-
-    pub async fn enter<F>(
-        &self, cookie_store_id: CookieStoreId,
-        mut tab_properties: TabProperties, register_tab: F
-    ) -> Result<(), CustomError>
-    where F: FnOnce(TabId) {
-        tab_properties.cookie_store_id = cookie_store_id;
-        register_tab(tab_properties.new_tab().await?);
-        self.close_tab().await
-    }
-
-    async fn close_tab(&self) -> Result<(), CustomError> {
+    pub async fn close_tab(&self) -> Result<(), CustomError> {
         interop::cast_or_standard_mismatch(JsFuture::from(
             tab_remove(self.inner)).await.or(Err(
             CustomError::FailedTabOperation {
