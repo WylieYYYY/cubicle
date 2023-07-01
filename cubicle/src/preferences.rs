@@ -1,4 +1,5 @@
 use std::collections::BTreeSet;
+use std::sync::Arc;
 
 use derivative::Derivative;
 use serde::{Deserialize, Serialize};
@@ -28,10 +29,10 @@ pub enum ContainerAssignStrategy {
 impl ContainerAssignStrategy {
     pub async fn match_container(&self, global_context: &mut GlobalContext,
         domain: EncodedDomain)
-    -> Result<CookieStoreId, CustomError> {
+    -> Result<Arc<CookieStoreId>, CustomError> {
         if let Some(container_match) = global_context
             .containers.match_container(domain.clone()) {
-            return Ok(container_match.container.cookie_store_id().clone());
+            return Ok(Arc::clone(container_match.container.handle()));
         }
 
         let mut details = IdentityDetails::default();
@@ -45,11 +46,11 @@ impl ContainerAssignStrategy {
         }
 
         let container = Container::create(details,
-            ContainerVariant::Temporary { tab_count: 1 }, suffixes).await?;
-        let cookie_store_id = container.cookie_store_id().clone();
-        storage::store_single_entry(&cookie_store_id, &container).await?;
+            ContainerVariant::Temporary, suffixes).await?;
+        let container_handle = Arc::clone(container.handle());
+        storage::store_single_entry(&container_handle, &container).await?;
         global_context.containers.insert(container);
-        Ok(cookie_store_id)
+        Ok(container_handle)
     }
 }
 

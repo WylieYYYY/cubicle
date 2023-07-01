@@ -1,5 +1,7 @@
 'use strict';
-import {default as init, onMessage, onTabUpdated} from './cubicle.js';
+import {
+    default as init, onMessage, onTabRemoved, onTabUpdated
+} from './cubicle.js';
 
 const listenerMap = new Map();
 const wasmLoaded = init();
@@ -21,7 +23,10 @@ export function addRuntimeListener(event, handler) {
 
     addRuntimeListener('onMessage', onMessage);
 
+    browser.tabs.onRemoved.addListener((tabId) => {
+        wasmLoaded.then(async () => onTabRemoved(tabId));
+    });
     browser.tabs.onUpdated.addListener((tabId, _changeInfo, tab) => {
         wasmLoaded.then(async () => onTabUpdated(tabId, tab));
-    }, {properties: ['url']})
+    }, {properties: ['url']});
 })();

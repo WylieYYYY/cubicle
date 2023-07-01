@@ -6,6 +6,7 @@ use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
 
 use super::contextual_identities::CookieStoreId;
+use crate::domain::EncodedDomain;
 use crate::interop;
 use crate::util::{self, errors::CustomError};
 
@@ -45,7 +46,10 @@ pub struct TabProperties {
 }
 
 impl TabProperties {
-    pub fn url(&self) -> &Option<String> { &self.url }
+    pub fn domain(&self) -> Result<Option<EncodedDomain>, CustomError> {
+        let Some(url) = &self.url else { return Ok(None); };
+        interop::url_to_domain(url).map(Some)
+    }
 
     pub async fn new_tab(&self) -> Result<TabId, CustomError> {
         let new_properties = interop::cast_or_standard_mismatch::<Self>(

@@ -35,12 +35,12 @@ impl GlobalContext {
     }
 
     pub async fn fetch_all_containers(&mut self)
-    -> Result<Vec<(&CookieStoreId, IdentityDetails)>, CustomError> {
+    -> Result<Vec<(CookieStoreId, IdentityDetails)>, CustomError> {
         self.containers = ContainerOwner::from_iter(
             ContextualIdentity::fetch_all()
             .await?.into_iter().map(Container::from));
         Ok(self.containers.iter().map(|container| {
-            (container.cookie_store_id(), container.identity_details())
+            ((**container.handle()).clone(), container.identity_details())
         }).collect())
     }
 }

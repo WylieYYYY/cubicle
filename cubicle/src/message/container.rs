@@ -31,14 +31,13 @@ impl ContainerAction {
                             .get_mut(&cookie_store_id)
                             .expect("valid ID passed from message");
                         container.update(details).await?;
-                        container.cookie_store_id().clone()
+                        (**container.handle()).clone()
                     },
                     None => {
                         let container = Container::create(details,
                             ContainerVariant::Permanent,
                             BTreeSet::default()).await?;
-                        let cookie_store_id = container
-                            .cookie_store_id().clone();
+                        let cookie_store_id = (**container.handle()).clone();
                         global_context.containers.insert(container);
                         cookie_store_id
                     }
@@ -48,11 +47,10 @@ impl ContainerAction {
 
             DeleteContainer { cookie_store_id } => {
                 let container = global_context.containers
-                    .remove(&cookie_store_id)
+                    .get_mut(&cookie_store_id)
                     .expect("valid ID passed from message");
-                if let Err(container) = container.delete().await {
-                    global_context.containers.insert(container);
-                }
+                container.delete().await?;
+                global_context.containers.remove(&cookie_store_id);
                 Ok(cookie_store_id)
             }
         }
