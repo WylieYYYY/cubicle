@@ -25,15 +25,17 @@ use crate::tab::TabDeterminant;
 use crate::util::errors::CustomError;
 
 #[wasm_bindgen(start)]
-async fn main() -> Result<(), JsValue> {
+async fn main() -> Result<(), JsError> {
     panic::set_hook(Box::new(console_error_panic_hook::hook));
-    let mut global_context = GLOBAL_CONTEXT.lock().await;
-    *global_context = GlobalContext::from_storage().await.unwrap();
-    if global_context.psl.len() == 0 {
-        Message::PslUpdate { url: None }.act(&mut global_context).await.unwrap();
-    }
-    drop(global_context.fetch_all_containers().await);
-    Ok(())
+    {
+        let mut global_context = GLOBAL_CONTEXT.lock().await;
+        *global_context = GlobalContext::from_storage().await?;
+        if global_context.psl.len() == 0 {
+            Message::PslUpdate { url: None }.act(&mut global_context).await?;
+        }
+        drop(global_context.fetch_all_containers().await);
+        Ok(())
+    }.map_err(|error: CustomError| JsError::new(&error.to_string()))
 }
 
 static GLOBAL_CONTEXT: Lazy<Mutex<GlobalContext>> = Lazy::new(||
@@ -74,24 +76,21 @@ pub async fn on_tab_updated(tab_id: isize, tab_properties: JsValue)
 }
 
 #[wasm_bindgen(js_name="onTabRemoved")]
-pub async fn on_tab_removed(tab_id: isize) -> Result<(), JsError> {
+pub async fn on_tab_removed(tab_id: isize) {
     let tab_id = TabId::new(tab_id);
     let Some(tab_det) = MANAGED_TABS.lock().await.remove(&tab_id) else {
-        return Ok(());
+        return;
     };
     let cookie_store_id = (*tab_det.container_handle).clone();
     drop(tab_det);
     let mut global_context = GLOBAL_CONTEXT.lock().await;
     let Some(container) = global_context.containers
-        .get_mut(&cookie_store_id) else { return Ok(()); };
+        .get_mut(&cookie_store_id) else { return; };
 
     if container.variant == ContainerVariant::Temporary {
-        let deleted = container.delete_if_empty().await
-            .map_err(|error: CustomError| JsError::new(&error.to_string()))?;
+        let deleted = container.delete_if_empty().await.unwrap_or(false);
         if deleted { global_context.containers.remove(&cookie_store_id); }
     }
-
-    Ok(())
 }
 
 async fn tab_new_domain(tab_id: TabId, tab_properties: &TabProperties)

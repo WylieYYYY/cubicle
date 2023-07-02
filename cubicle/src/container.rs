@@ -45,8 +45,14 @@ impl ContainerOwner {
         for (matched_domain, suffix) in matches {
             let cookie_store_id = self.suffix_id_map.get(&suffix)
                 .expect("suffix matched");
-            let container = self.id_container_map.get_mut(&cookie_store_id)?;
-            return Some(ContainerMatch { container, matched_domain, suffix });
+            if let Some(container) = self.id_container_map
+                .remove(cookie_store_id) {
+                let container = self.id_container_map
+                    .entry(cookie_store_id.clone()).or_insert(container);
+                return Some(ContainerMatch {
+                    container, matched_domain, suffix
+                });
+            }
         }
         None
     }

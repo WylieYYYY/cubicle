@@ -7,7 +7,8 @@ pub mod tabs;
 use std::any;
 
 use js_sys::{JsString, Promise, Reflect};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+use serde_wasm_bindgen::Serializer;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
 use web_sys::Url;
@@ -43,6 +44,12 @@ pub fn url_to_domain(url: &str) -> Result<EncodedDomain, CustomError> {
     EncodedDomain::try_from(&*hostname).or(Err(CustomError::StandardMismatch {
         message: String::from("domain should be validated")
     }))
+}
+
+pub fn to_jsvalue<T>(value: &T) -> JsValue
+where T: Serialize + ?Sized {
+    value.serialize(&Serializer::json_compatible())
+        .expect("serialization fail unlikely")
 }
 
 pub fn get_or_standard_mismatch(target: &JsValue, key: &str)

@@ -4,7 +4,7 @@ use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
 
 use crate::interop;
-use crate::util::{self, errors::CustomError};
+use crate::util::errors::CustomError;
 
 #[wasm_bindgen]
 extern "C" {
@@ -16,7 +16,7 @@ extern "C" {
 
 pub async fn get_with_keys<T>(keys: &mut T) -> Result<(), CustomError>
 where T: for <'de> Deserialize<'de> + Serialize {
-    let got = JsFuture::from(storage_get(&util::to_jsvalue(keys))).await
+    let got = JsFuture::from(storage_get(&interop::to_jsvalue(keys))).await
         .or(Err(CustomError::FailedStorageOperation {
             verb_prep: String::from("load from")
         }))?;
@@ -26,7 +26,7 @@ where T: for <'de> Deserialize<'de> + Serialize {
 
 pub async fn set_with_serde_keys<T>(keys: &T) -> Result<(), CustomError>
 where T: Serialize {
-    set_with_value_keys(&util::to_jsvalue(keys)).await
+    set_with_value_keys(&interop::to_jsvalue(keys)).await
 }
 
 pub async fn set_with_value_keys(keys: &JsValue) -> Result<(), CustomError> {
@@ -41,8 +41,8 @@ pub async fn store_single_entry<K, V>(key: &K, value: &V)
 -> Result<(), CustomError>
 where K: Serialize + ?Sized, V: Serialize {
     let keys = Object::new();
-    Reflect::set(&keys, &util::to_jsvalue(key),
-        &util::to_jsvalue(value))
+    Reflect::set(&keys, &interop::to_jsvalue(key),
+        &interop::to_jsvalue(value))
         .expect("inline construction");
     set_with_value_keys(&keys).await?;
     Ok(())

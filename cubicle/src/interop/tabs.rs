@@ -8,7 +8,7 @@ use wasm_bindgen_futures::JsFuture;
 use super::contextual_identities::CookieStoreId;
 use crate::domain::EncodedDomain;
 use crate::interop;
-use crate::util::{self, errors::CustomError};
+use crate::util::errors::CustomError;
 
 #[wasm_bindgen]
 extern "C" {
@@ -53,7 +53,7 @@ impl TabProperties {
 
     pub async fn new_tab(&self) -> Result<TabId, CustomError> {
         let new_properties = interop::cast_or_standard_mismatch::<Self>(
-            JsFuture::from(tab_create(util::to_jsvalue(self))).await.or(Err(
+            JsFuture::from(tab_create(interop::to_jsvalue(self))).await.or(Err(
             CustomError::FailedTabOperation {
                 verb: String::from("create")
             }))?)?;
@@ -70,7 +70,7 @@ impl TabId {
         Self { inner: tab_id }
     }
     pub async fn stop_loading(&self) {
-        let details = util::to_jsvalue(&HashMap::from([
+        let details = interop::to_jsvalue(&HashMap::from([
             ("code", "window.stop();"), ("runAt", "document_start")
         ]));
         drop(JsFuture::from(tab_execute_js(self.inner, details)).await);
@@ -105,7 +105,7 @@ pub async fn current_tab_cookie_store_id()
 -> Result<CookieStoreId, CustomError> {
     let query_obj = HashMap::from([("active", true), ("currentWindow", true)]);
     let active_tabs = JsFuture::from(tab_query(
-        util::to_jsvalue(&query_obj))).await;
+        interop::to_jsvalue(&query_obj))).await;
     if let Ok(active_tabs) = active_tabs.as_ref().map(Array::from) {
         let prop = super::get_or_standard_mismatch(
             &active_tabs.pop(), "cookieStoreId")?;

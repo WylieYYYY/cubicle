@@ -1,3 +1,6 @@
+//! Generic reusable functions that do not rely on WebAssembly or project
+//! specific resources.
+
 pub mod errors;
 
 use std::collections::{BTreeMap, BTreeSet};
@@ -6,25 +9,13 @@ use std::iter::DoubleEndedIterator;
 use std::ops::RangeBounds;
 
 use base64::prelude::*;
-use serde::Serialize;
 use serde::de::Visitor;
-use serde_wasm_bindgen::Serializer;
-use wasm_bindgen::JsValue;
 
-pub fn usize_to_u32(value: usize) -> u32 {
-    let maybe_truncated = value as u32;
-    if value > maybe_truncated as usize { u32::MAX }
-    else { maybe_truncated }
-}
-
-pub fn to_jsvalue<T>(value: &T) -> JsValue
-where T: Serialize + ?Sized {
-    value.serialize(&Serializer::json_compatible())
-        .expect("serialization fail unlikely")
-}
-
+/// Adapter for searching a key within a binary tree based data structures,
+/// discarding values that are not keys.
 pub trait KeyRangeExt<'a, K>
 where K: Ord + 'a {
+    /// Returns a [DoubleEndedIterator] of keys that are within the range.
     fn key_range<R>(&'a self, range: R)
     -> Box<dyn DoubleEndedIterator<Item = &'a K> + 'a>
     where R: RangeBounds<K>;
@@ -48,9 +39,14 @@ where K: Ord + 'a {
     }
 }
 
+/// Deserialization visitor that decodes a string with no padding base 64,
+/// and remove the prepending [MARKER_PREFIX](Base64Visitor::MARKER_PREFIX)
+/// from the string.
 pub struct Base64Visitor;
 
 impl Base64Visitor {
+    /// Marker that was prepended to the base 64 value,
+    /// mainly for prompting external consumers.
     pub const MARKER_PREFIX: &str = "b64_";
 }
 
@@ -77,6 +73,7 @@ impl Visitor<'_> for Base64Visitor {
     }
 }
 
+/// Deserialization visitor that accepts a single string.
 pub struct SingleStringVisitor;
 
 impl Visitor<'_> for SingleStringVisitor {

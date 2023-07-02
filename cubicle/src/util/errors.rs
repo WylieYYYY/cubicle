@@ -1,9 +1,14 @@
+//! Error handling and custom error type.
+
 use std::io::ErrorKind;
 
 use thiserror::Error;
 
+/// All possible recoverable errors,
+/// may be further separated for better handling.
 #[derive(Debug, Error)]
 pub enum CustomError {
+    // unpredictable system errors
     #[error("input / output error: {0}")]
     IoError(ErrorKind),
     #[error("browser's return value doesn't match the standard, {message}")]
@@ -19,9 +24,11 @@ pub enum CustomError {
     #[error("failed to {verb} tab")]
     FailedTabOperation { verb: String },
 
+    // predictable errors that are uncommon
     #[error("unsupported version")]
     UnsupportedVersion,
 
+    // predictable errors that are common
     #[error(transparent)]
     InvalidDomain { #[from] source: idna::Errors },
     #[error("invalid suffix format `{suffix}`")]

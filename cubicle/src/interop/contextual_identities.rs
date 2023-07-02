@@ -9,8 +9,9 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
 
+use crate::interop;
 use crate::util::{
-    self, Base64Visitor, errors::CustomError, SingleStringVisitor
+    Base64Visitor, errors::CustomError, SingleStringVisitor
 };
 
 #[wasm_bindgen]
@@ -50,7 +51,7 @@ impl ContextualIdentity {
             details.color = IdentityColor::new_rolling_color();
         }
         let identity = JsFuture::from(identity_create(
-            util::to_jsvalue(&details))).await
+            interop::to_jsvalue(&details))).await
             .or(Err(CustomError::FailedContainerOperation {
                 verb: String::from("create")
             }))?;
@@ -103,7 +104,7 @@ impl CookieStoreId {
         let error = CustomError::FailedContainerOperation {
             verb: String::from("update")
         };
-        let details = util::to_jsvalue(&details);
+        let details = interop::to_jsvalue(&details);
         let identity = JsFuture::from(identity_update(&self.inner, details))
             .await.or(Err(error))?;
         super::cast_or_standard_mismatch(identity)

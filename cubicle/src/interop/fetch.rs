@@ -18,7 +18,7 @@ use web_sys::{
 
 use super::bits;
 use crate::interop;
-use crate::util::{self, errors::CustomError};
+use crate::util::errors::CustomError;
 
 #[derive(Copy, Clone, Eq, PartialEq)]
 enum FetchState { Delivered, Consumed, Done }
@@ -63,7 +63,7 @@ impl Fetch {
             }
         }
 
-        let size = util::usize_to_u32(size);
+        let size = u32::try_from(size).unwrap_or(u32::MAX);
         if size != state.buffer.length() {
             state.buffer = Uint8Array::new_with_length(size);
         }
