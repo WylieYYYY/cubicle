@@ -1,3 +1,6 @@
+//! Information and structures used for
+//! specifying the style of a contextual identity.
+
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use serde::{Deserialize, Serialize};
@@ -7,12 +10,16 @@ use strum_macros::{
 };
 use tera::{Context, Tera};
 
+/// Main styling structure for contextual identity,
+/// check that [color](IdentityDetails::color) is not
+/// [Cycle](IdentityColor::Cycle) before deserialization.
 #[derive(Deserialize, Serialize)]
 pub struct IdentityDetails {
     pub color: IdentityColor, pub icon: IdentityIcon, pub name: String
 }
 
 impl Default for IdentityDetails {
+    /// Default styling for temporary containers.
     fn default() -> Self {
         Self {
             color: IdentityColor::Cycle, icon: IdentityIcon::Circle,
@@ -21,10 +28,16 @@ impl Default for IdentityDetails {
     }
 }
 
+/// Trait for getting an [IdentityDetails].
+/// Currently used for getting styles as the fields of identities are private.
 pub trait IdentityDetailsProvider {
     fn identity_details(&self) -> IdentityDetails;
 }
 
+/// Known supported color names, [Unknown](IdentityColor::Unknown) is for
+/// potentially new colors in the future.
+/// [Cycle](IdentityColor::Cycle) may be separated into its own enum in the
+/// future to avoid incorrect deserialization.
 #[derive(
     Clone, Deserialize, Display, EnumCountMacro, EnumIter, EnumString, Eq,
     FromRepr, PartialEq, Serialize
@@ -39,6 +52,8 @@ pub enum IdentityColor {
 }
 
 impl IdentityColor {
+    /// Gets a new color by rolling forward in the color cycle,
+    /// the cycle is shared globally.
     pub fn new_rolling_color() -> Self {
         static COLOR_INDEX: AtomicUsize = AtomicUsize::new(0);
         let new_index = COLOR_INDEX.fetch_add(1,
@@ -48,8 +63,12 @@ impl IdentityColor {
     }
 }
 
+/// Template for predicting where the icon images are,
+/// necessary as the URL will only be provided once an identity is created.
 const ICON_URL_TEMPLATE: &str = "resource://usercontext-content/{{name}}.svg";
 
+/// Known supported icon names, [Unknown](IdentityIcon::Unknown) is for
+/// potentially new icons in the future.
 #[derive(Clone, Deserialize, Display, EnumIter, EnumString, Serialize)]
 #[serde(rename_all="lowercase")]
 #[strum(serialize_all="lowercase")]
@@ -60,6 +79,7 @@ pub enum IdentityIcon {
 }
 
 impl IdentityIcon {
+    /// Gets the predicted URL of the icon.
     pub fn url(&self) -> String {
         let mut context = Context::new();
         context.insert("name", &self.to_string());

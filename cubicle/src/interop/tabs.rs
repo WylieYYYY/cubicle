@@ -1,3 +1,7 @@
+//! Wrappers around the `browser.tabs` API.
+//! Most fails are represented by
+//! [FailedTabOperation](CustomError::FailedTabOperation).
+
 use std::collections::HashMap;
 
 use js_sys::{Array, Promise};
@@ -24,6 +28,9 @@ extern "C" {
     fn tab_reload(tab_id: isize) -> Promise;
 }
 
+/// Retained properties that affect tab creation,
+/// deserializes from a `Tab` instance and
+/// serializes to a `create_properties` instance.
 #[derive(Deserialize, Serialize)]
 #[serde(rename_all="camelCase")]
 pub struct TabProperties {
@@ -46,11 +53,16 @@ pub struct TabProperties {
 }
 
 impl TabProperties {
+    /// The domain, [None] if the tab does not have a URL.
+    /// Fails if a domain cannot be extracted from the contained URL.
     pub fn domain(&self) -> Result<Option<EncodedDomain>, CustomError> {
         let Some(url) = &self.url else { return Ok(None); };
         interop::url_to_domain(url).map(Some)
     }
 
+    /// Create a new tab using this instance,
+    /// whether the resulting tab completely matches is unchecked.
+    /// Fails if the browser indicates so.
     pub async fn new_tab(&self) -> Result<TabId, CustomError> {
         let new_properties = interop::cast_or_standard_mismatch::<Self>(
             JsFuture::from(tab_create(interop::to_jsvalue(self))).await.or(Err(
@@ -61,20 +73,31 @@ impl TabProperties {
     }
 }
 
+/// Unique identifier that allow operations on specific tabs.
+/// All operations may fail if the tab specified by the ID does not exist.
 #[derive(Clone, Deserialize, Eq, Hash, PartialEq, Serialize)]
 #[serde(transparent)]
 pub struct TabId { inner: isize }
 
 impl TabId {
+    /// Creates a new ID by trusting the given value.
+    /// May be replaced by [FromWasmAbi](wasm_bindgen::convert::FromWasmAbi)
+    /// later for brevity and clarity.
     pub fn new(tab_id: isize) -> Self {
         Self { inner: tab_id }
     }
+
+    /// Stops the specified tab from loading.
+    /// This function does not return errors,
+    /// as failures are not recoverable and the tab will be loaded.
     pub async fn stop_loading(&self) {
         let details = interop::to_jsvalue(&HashMap::from([
             ("code", "window.stop();"), ("runAt", "document_start")
         ]));
         drop(JsFuture::from(tab_execute_js(self.inner, details)).await);
     }
+
+    /// Closes the specified tab, fails if the browser indicates so.
     pub async fn close_tab(&self) -> Result<(), CustomError> {
         interop::cast_or_standard_mismatch(JsFuture::from(
             tab_remove(self.inner)).await.or(Err(
@@ -82,6 +105,8 @@ impl TabId {
                 verb: String::from("remove")
             }))?)
     }
+
+    /// Reloads the specified tab, fails if the browser indicates so.
     pub async fn reload_tab(&self) -> Result<(), CustomError> {
         interop::cast_or_standard_mismatch(JsFuture::from(
             tab_reload(self.inner)).await.or(Err(
@@ -91,8 +116,11 @@ impl TabId {
     }
 }
 
+/// Structure contained in [TabProperties] that requires
+/// asymmetric serialization.
+/// No interfaces are exposed as this is only used for conversion.
 #[derive(Deserialize)]
-pub struct MutedInfo { muted: bool }
+struct MutedInfo { muted: bool }
 
 impl Serialize for MutedInfo {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -101,6 +129,9 @@ impl Serialize for MutedInfo {
     }
 }
 
+/// Gets the [CookieStoreId] of the current tab.
+/// Fails with [FailedFetchActiveTab](CustomError::FailedFetchActiveTab)
+/// if there is no active tab in the current window.
 pub async fn current_tab_cookie_store_id()
 -> Result<CookieStoreId, CustomError> {
     let query_obj = HashMap::from([("active", true), ("currentWindow", true)]);

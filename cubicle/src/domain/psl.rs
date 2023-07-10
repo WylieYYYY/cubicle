@@ -1,3 +1,6 @@
+//! Public suffix list, as described at
+//! [publicsuffix.org](https://publicsuffix.org/).
+
 use std::collections::BTreeSet;
 use std::io::ErrorKind;
 
@@ -9,10 +12,17 @@ use super::EncodedDomain;
 use super::suffix::{self, Suffix, SuffixType};
 use crate::util::errors::CustomError;
 
+/// Public suffix list, used for checking if domains are controlled by
+/// the same entity, and if containers should span across them.
 #[derive(Default, Deserialize, Serialize)]
 pub struct Psl { last_updated: NaiveDate, set: BTreeSet<Suffix> }
 
 impl Psl {
+    /// Reads and constructs a public suffix list from a stream.
+    /// Comments and empty lines are ignored,
+    /// comments must start from column 0.
+    /// Fails with [CustomError::IoError] if the stream ends unexpectedly,
+    /// or with [CustomError::InvalidSuffix].
     pub async fn from_stream<T>(stream: &mut T, last_updated: NaiveDate)
     -> Result<Self, CustomError>
     where T: BufRead + Unpin {
@@ -31,6 +41,10 @@ impl Psl {
         Ok(Self { last_updated, set })
     }
 
+    /// Matches the given domain with the stored suffixes.
+    /// Returns a domain which is equal to the input, or is an ancestor of it.
+    /// [None] if the list does not specify the condition for the domain.
+    /// Domains that share the same can share cookies safely.
     pub fn match_suffix(&self, domain: EncodedDomain)
     -> Option<EncodedDomain> {
         suffix::match_suffix(&self.set, domain).find_map(|(domain, suffix)| {
@@ -39,6 +53,10 @@ impl Psl {
         })
     }
 
+    /// The number of suffixes stored.
     pub fn len(&self) -> usize { self.set.len() }
+
+    /// Last updated date, time is not stored as
+    /// this is only used for rate limiting.
     pub fn last_updated(&self) -> NaiveDate { self.last_updated }
 }

@@ -1,3 +1,5 @@
+//! Utility for fetching large files over networks asynchronously.
+
 use std::io::{self, ErrorKind};
 use std::pin::Pin;
 use std::sync::Arc;
@@ -20,9 +22,18 @@ use super::bits;
 use crate::interop;
 use crate::util::errors::CustomError;
 
+/// The current state of the fetch.
+/// - [Delivered](FetchState::Delivered) means that there are data that are
+///   fetched but have not been read.
+/// - [Consumed](FetchState::Consumed) means that all available data are read
+///   but there are more to come. It is used as the initial state.
+/// - [Done](FetchState::Done) means that all data are read and there are no
+///   more data available.
 #[derive(Copy, Clone, Eq, PartialEq)]
 enum FetchState { Delivered, Consumed, Done }
 
+/// Main structure for fetching large files over network asynchronously.
+/// Fetch cancellation may be added later.
 pub struct Fetch {
     reader: ReadableStreamByobReader,
     resolve_read_then: Closure<dyn FnMut(JsValue)>,
@@ -30,6 +41,7 @@ pub struct Fetch {
     state: Arc<Mutex<SharedState>>
 }
 
+/// Variable state that changes when polled, or when more data is available.
 #[derive(Derivative)]
 #[derivative(Default)]
 struct SharedState {
@@ -40,6 +52,9 @@ struct SharedState {
 }
 
 impl Fetch {
+    /// Gets a response from an URL and create an instance using a reader.
+    /// Fails if the URL contains credentials, if a network error occurs,
+    /// or if the response does not contain a body.
     pub async fn get_stream(url: &str) -> Result<Self, CustomError> {
         Self::try_from(Response::from(get(url).await?).body()
             .ok_or(CustomError::FailedFetchRequest {
@@ -47,6 +62,9 @@ impl Fetch {
             })?)
     }
 
+    /// Sets state and returns with [Poll::Ready] if there is available data.
+    /// If fetching has started or is starting, returns [Poll::Pending].
+    /// Otherwise, starts fetching and returns [Poll::Pending].
     fn read_to_buffer(self: Pin<&mut Self>, cx: &mut Context<'_>, size: usize)
     -> Poll<io::Result<FetchState>> {
         let Some(mut state) = self.state.try_lock() else {
@@ -74,6 +92,9 @@ impl Fetch {
         Poll::Pending
     }
 
+    /// Closures to execute when the promise has been resolved or rejected.
+    /// Error handling is incomplete and may be refactor after
+    /// [poll_read](Fetch::poll_read) handling is finalized.
     fn read_thens(state: Arc<Mutex<SharedState>>, resolve: bool)
     -> Closure<dyn FnMut(JsValue)> {
         Closure::new(move |value: JsValue| {
@@ -120,6 +141,9 @@ impl Read for Fetch {
 
 impl TryFrom<ReadableStream> for Fetch {
     type Error = CustomError;
+
+    /// Creates an instance using a reader to the stream,
+    /// only fails when unexpected value is returned.
     fn try_from(value: ReadableStream) -> Result<Self, Self::Error> {
         let mut reader_options = ReadableStreamGetReaderOptions::new();
         reader_options.mode(ReadableStreamReaderMode::Byob);
@@ -127,7 +151,7 @@ impl TryFrom<ReadableStream> for Fetch {
             .dyn_into().or(Err(CustomError::StandardMismatch {
                 message: String::from("a BYOB reader is expected")
             }))?;
-        let state = Arc::new(Mutex::new(SharedState::default()));
+        let state = Arc::<Mutex<SharedState>>::default();
         Ok(Self {
             reader, resolve_read_then: Self::read_thens(state.clone(), true),
             reject_read_then: Self::read_thens(state.clone(), false), state
@@ -135,6 +159,8 @@ impl TryFrom<ReadableStream> for Fetch {
     }
 }
 
+/// Gets a response from an URL.
+/// Fails if the URL contains credentials, or if a network error occurs.
 pub async fn get(url: &str) -> Result<Response, CustomError> {
     let mut connection_options = RequestInit::new();
     connection_options.method("GET").mode(RequestMode::Cors);

@@ -1,11 +1,11 @@
-mod container;
-mod context;
-mod domain;
-mod interop;
-mod message;
-mod preferences;
-mod tab;
-mod util;
+pub mod container;
+pub mod context;
+pub mod domain;
+pub mod interop;
+pub mod message;
+pub mod preferences;
+pub mod tab;
+pub mod util;
 
 use std::collections::HashMap;
 use std::panic;

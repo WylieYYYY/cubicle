@@ -1,3 +1,6 @@
+//! Suffix that can appear in the public suffix list,
+//! also used for allocating containers to domains.
+
 use std::cmp::Ordering;
 use std::{convert, iter, mem};
 
@@ -8,6 +11,9 @@ use strum_macros::EnumIter;
 use super::EncodedDomain;
 use crate::util::{errors::CustomError, KeyRangeExt};
 
+/// Looks through a binary tree based data structure of suffixes
+/// to search for ones that match the domain or its ancestors.
+/// Returns an iterator of tuples of the matched domains and suffixes.
 pub fn match_suffix<'a, T>(set: &'a T, domain: EncodedDomain)
 -> impl Iterator<Item = (EncodedDomain, Suffix)> + 'a
 where T: KeyRangeExt<'a, Suffix> + 'a {
@@ -22,6 +28,8 @@ where T: KeyRangeExt<'a, Suffix> + 'a {
     })
 }
 
+/// Looks through a binary tree based data structure of suffixes
+/// to search for one that exactly matches the domain.
 fn match_suffix_exact<'a, T>(set: &'a T, domain: &EncodedDomain)
 -> Option<Suffix>
 where T: KeyRangeExt<'a, Suffix> + 'a {
@@ -33,14 +41,23 @@ where T: KeyRangeExt<'a, Suffix> + 'a {
     search_range.rfind(|suffix| suffix.match_ordering(domain).is_eq()).cloned()
 }
 
+/// Valid suffix that consists of a [SuffixType] and an [EncodedDomain].
+/// This is okay as the bare glob `*` is handled separately.
+/// The ordering is organized similarly as the
+/// published suffix list for quick searching.
 #[derive(Clone, Deserialize, Eq, PartialEq, Serialize)]
 pub struct Suffix { suffix_type: SuffixType, domain: EncodedDomain }
 
 impl Suffix {
+    /// Creates a suffix from its individual components.
+    /// The instance is guarenteed to be well-formed.
     pub fn new(suffix_type: SuffixType, domain: EncodedDomain) -> Self {
         Self { suffix_type, domain }
     }
 
+    /// Check if this suffix matches the given domain.
+    /// Returns an [Ordering] as it was used for hinting search direction,
+    /// may be changed to return a boolean value later.
     pub fn match_ordering(&self, domain: &EncodedDomain) -> Ordering {
         let self_reversed = self.domain.reverse();
         let globbed: Box<dyn Iterator<Item = &str>> = {
@@ -52,19 +69,30 @@ impl Suffix {
         domain.reverse().cmp(self_reversed.chain(globbed))
     }
 
+    /// Encoded version of the suffix,
+    /// safe to use for checking for suffix duplication.
     pub fn encoded(&self) -> String {
         format!("{}{}", self.suffix_type.prefix(), self.domain.encoded())
     }
+
+    /// Unencoded version of the suffix.
     pub fn raw(&self) -> String {
         format!("{}{}", self.suffix_type.prefix(), self.domain.raw())
     }
 
+    /// The type of the suffix, primarily to check if it is an
+    /// [Exclusion](SuffixType::Exclusion).
+    /// May be replaced by an `is_exclusion` function.
     pub fn suffix_type(&self) -> &SuffixType { &self.suffix_type }
 }
 
 impl TryFrom<&str> for Suffix {
     type Error = CustomError;
 
+    /// Constructs a suffix from a string.
+    /// Fails with [CustomError::InvalidSuffix] if it has a malformed prefix,
+    /// or if the contained domain cannot be encoded as
+    /// an international domain name.
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         for suffix_type in SuffixType::iter().cycle()
             .skip(SuffixType::INDEX_AFTER_NORMAL) {
@@ -104,6 +132,9 @@ impl Ord for Suffix {
     }
 }
 
+/// Types for suffixes.
+/// The ordering is the result of suffix not storing glob star
+/// as a part of the domain.
 #[derive(
     Clone, Deserialize, EnumIter, Eq,
     Ord, PartialEq, PartialOrd, Serialize
@@ -111,8 +142,12 @@ impl Ord for Suffix {
 pub enum SuffixType { Exclusion, Normal, Glob }
 
 impl SuffixType {
+    /// Number of types to skip for better prefix matching.
     pub(self) const INDEX_AFTER_NORMAL: usize = 2;
 
+    /// Textual representation of the type.
+    /// To parse a suffix from a string, use [Suffix::try_from] instead.
+    /// To create a suffix internally, use [Suffix::new] instead.
     pub(self) fn prefix(&self) -> &str {
         match self {
             SuffixType::Glob => "*.",

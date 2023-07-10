@@ -1,3 +1,7 @@
+//! Wrappers around the `browser.storage.local` API.
+//! Most fails are represented by
+//! [FailedStorageOperation](CustomError::FailedStorageOperation).
+
 use js_sys::{Object, Promise, Reflect};
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
@@ -14,6 +18,9 @@ extern "C" {
     fn storage_set(keys: &JsValue) -> Promise;
 }
 
+/// Populates a structure with values, fails if the browser indicates so.
+/// Can fail with [StandardMismatch](CustomError::StandardMismatch) if some
+/// types of returned values are not compatible to the structure.
 pub async fn get_with_keys<T>(keys: &mut T) -> Result<(), CustomError>
 where T: for <'de> Deserialize<'de> + Serialize {
     let got = JsFuture::from(storage_get(&interop::to_jsvalue(keys))).await
@@ -24,11 +31,15 @@ where T: for <'de> Deserialize<'de> + Serialize {
     Ok(())
 }
 
+/// Sets values with a structural representation,
+/// fails if the browser indicates so.
 pub async fn set_with_serde_keys<T>(keys: &T) -> Result<(), CustomError>
 where T: Serialize {
     set_with_value_keys(&interop::to_jsvalue(keys)).await
 }
 
+/// Sets values with a [JsValue] in a structural representation,
+/// fails if the browser indicates so.
 pub async fn set_with_value_keys(keys: &JsValue) -> Result<(), CustomError> {
     JsFuture::from(storage_set(keys)).await
         .or(Err(CustomError::FailedStorageOperation {
@@ -37,6 +48,7 @@ pub async fn set_with_value_keys(keys: &JsValue) -> Result<(), CustomError> {
     Ok(())
 }
 
+/// Sets a single value with a key, fails if the browser indicates so.
 pub async fn store_single_entry<K, V>(key: &K, value: &V)
 -> Result<(), CustomError>
 where K: Serialize + ?Sized, V: Serialize {
@@ -44,6 +56,5 @@ where K: Serialize + ?Sized, V: Serialize {
     Reflect::set(&keys, &interop::to_jsvalue(key),
         &interop::to_jsvalue(value))
         .expect("inline construction");
-    set_with_value_keys(&keys).await?;
-    Ok(())
+    set_with_value_keys(&keys).await
 }
