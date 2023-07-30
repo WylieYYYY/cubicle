@@ -1,3 +1,5 @@
+//! Message type for communicating with content and pop-up scripts.
+
 mod container;
 mod view;
 
@@ -14,6 +16,8 @@ use crate::domain::psl::Psl;
 use crate::interop::{self, fetch::Fetch, storage};
 use crate::util::errors::CustomError;
 
+/// Message type for communicating with content and pop-up scripts.
+/// All passed structures must conform to this type definition.
 #[derive(Deserialize)]
 #[serde(rename_all="snake_case", tag="message_type")]
 pub enum Message {
@@ -23,6 +27,8 @@ pub enum Message {
 }
 
 impl Message {
+    /// Perform action requested by the message,
+    /// this may be separated in the future to avoid excessive locking.
     pub async fn act(
         self, global_context: &mut impl DerefMut<Target = GlobalContext>
     ) -> Result<String, CustomError> {

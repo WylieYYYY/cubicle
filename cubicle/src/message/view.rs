@@ -1,3 +1,4 @@
+//! Message for content that can be rendered to a string.
 use std::{iter, ops::DerefMut};
 
 use chrono::offset::Utc;
@@ -14,6 +15,9 @@ use crate::interop::contextual_identities::{
 };
 use crate::util::errors::CustomError;
 
+/// Message for content that can be rendered to a string,
+/// kebab-case name of the view should be the start
+/// of a template file name in `res/components`.
 #[derive(Deserialize, Display)]
 #[serde(rename_all="snake_case", tag="view")]
 #[strum(serialize_all="kebab-case")]
@@ -29,6 +33,10 @@ pub enum View {
 }
 
 impl View {
+    /// Renders the view, can return any string within the predefined format.
+    /// Currently fails if the browser indicates so.
+    /// Failure may be changed once the [fetch_all_containers]
+    /// function is replaced.
     pub async fn render(
         &self, global_context: &mut impl DerefMut<Target = GlobalContext>
     ) -> Result<String, CustomError> {
@@ -66,6 +74,9 @@ impl View {
     }
 }
 
+/// View for the customization of container styles when creating a new
+/// container or updating an existing container.
+/// This may be renamed later to be less misleading.
 fn new_container(existing_container: Option<&Container>)
 -> Context {
     let mut context = Context::new();
@@ -80,6 +91,10 @@ fn new_container(existing_container: Option<&Container>)
     context
 }
 
+/// View for existing container list with additional action entries.
+/// Returns a string of HTML fragment, which is an `option` element.
+/// Fails if the browser indicates so.
+/// May be changed to fetching from the context once importing is implemented.
 async fn fetch_all_containers(
     global_context: &mut impl DerefMut<Target = GlobalContext>,
     selected: &CookieStoreId
@@ -100,12 +115,14 @@ async fn fetch_all_containers(
     "#, &context).expect("controlled enum template rendering"))
 }
 
+/// View for the deletion confirmation prompt.
 fn delete_prompt(container: &Container) -> Context {
     let mut context = Context::new();
     context.insert("name", &container.identity_details().name);
     context
 }
 
+/// View for the body of the pop-up if a container is selected.
 fn container_detail(container: &Container) -> Context {
     let mut context = Context::new();
     context.insert("suffixes", &container.suffixes.iter().map(|suffix| {
@@ -115,6 +132,8 @@ fn container_detail(container: &Container) -> Context {
     context
 }
 
+/// View for the body of the preferences page.
+/// May be rename to `preference_body` as the name has changed for that page.
 fn options_body(
     global_context: &mut impl DerefMut<Target = GlobalContext>
 ) -> Context {
@@ -127,6 +146,9 @@ fn options_body(
     context
 }
 
+/// Helper for rendering, since the templates are stored in the same directory,
+/// and the fetching methods are the same.
+/// Returns the rendered template as a string.
 async fn render_with(context: Context, view: &View) -> String {
     Tera::default().render_str(&interop::fetch_extension_file(&format!(
         "components/{filename}.html", filename=view.to_string())).await,

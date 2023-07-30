@@ -1,3 +1,5 @@
+//! Message type for container operations that are not tab related.
+
 use std::collections::BTreeSet;
 use std::ops::DerefMut;
 
@@ -8,6 +10,7 @@ use crate::context::GlobalContext;
 use crate::interop::contextual_identities::{CookieStoreId, IdentityDetails};
 use crate::util::errors::CustomError;
 
+/// Message type for container operations that are not tab related.
 #[derive(Deserialize)]
 #[serde(rename_all="snake_case", tag="action")]
 pub enum ContainerAction {
@@ -19,6 +22,9 @@ pub enum ContainerAction {
 }
 
 impl ContainerAction {
+    /// Performs the container operation,
+    /// returns the [CookieStoreId] of the newly focused container.
+    /// Fails if the browser indicates so.
     pub async fn act(
         self, global_context: &mut impl DerefMut<Target = GlobalContext>
     ) -> Result<CookieStoreId, CustomError> {

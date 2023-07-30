@@ -1,3 +1,5 @@
+//! A flexible container manager.
+
 pub mod container;
 pub mod context;
 pub mod domain;
@@ -24,6 +26,8 @@ use crate::message::Message;
 use crate::tab::TabDeterminant;
 use crate::util::errors::CustomError;
 
+/// Entry point for loading this extension.
+/// Mainly to load or populate a [GlobalContext].
 #[wasm_bindgen(start)]
 async fn main() -> Result<(), JsError> {
     panic::set_hook(Box::new(console_error_panic_hook::hook));
@@ -38,11 +42,20 @@ async fn main() -> Result<(), JsError> {
     }.map_err(|error: CustomError| JsError::new(&error.to_string()))
 }
 
+/// Persisting data for determining which container to switch to.
 static GLOBAL_CONTEXT: Lazy<Mutex<GlobalContext>> = Lazy::new(||
     Mutex::new(GlobalContext::default()));
+
+/// Map to check if tab needs to be relocated using a [TabDeterminant],
+/// there should be no false negative.
+/// Locking should only be done by short synchronous tasks,
+/// as a check is done before stop loading to prevent infinite reload.
 static MANAGED_TABS: Lazy<Mutex<HashMap<TabId, TabDeterminant>>> = Lazy::new(||
     Mutex::new(HashMap::default()));
 
+/// Message passing function for user actions other than tab changes.
+/// See [Message] for all possible message types.
+/// Returns and failures are specific to the message types.
 #[wasm_bindgen(js_name="onMessage")]
 pub async fn on_message(message: JsValue) -> Result<JsString, JsError> {
     let message = serde_wasm_bindgen::from_value::<Message>(message)
@@ -52,6 +65,9 @@ pub async fn on_message(message: JsValue) -> Result<JsString, JsError> {
         .map_err(|error| JsError::new(&error.to_string()))
 }
 
+/// Intercepts the tabs for container operations.
+/// First stop the tab loading, and recreate the tab if a container switch
+/// is required, reload the tab otherwise.
 #[wasm_bindgen(js_name="onTabUpdated")]
 pub async fn on_tab_updated(tab_id: isize, tab_properties: JsValue)
 -> Result<(), JsError> {
@@ -75,6 +91,9 @@ pub async fn on_tab_updated(tab_id: isize, tab_properties: JsValue)
     }.map_err(|error: CustomError| JsError::new(&error.to_string()))
 }
 
+/// Cleans up end of life containers when a tab is closed.
+/// Best effort with no error as it is optional,
+/// as cleanup is not possible when the browser is closed anyway.
 #[wasm_bindgen(js_name="onTabRemoved")]
 pub async fn on_tab_removed(tab_id: isize) {
     let tab_id = TabId::new(tab_id);
@@ -93,6 +112,8 @@ pub async fn on_tab_removed(tab_id: isize) {
     }
 }
 
+/// Checks [MANAGED_TABS] quickly to see if the tab requires switching.
+/// Returns the new domain if the tab are to be switched, [None] otherwise.
 async fn tab_new_domain(tab_id: TabId, tab_properties: &TabProperties)
 -> Option<EncodedDomain> {
     let new_domain = tab_properties.domain().ok()??;
@@ -112,6 +133,9 @@ async fn tab_new_domain(tab_id: TabId, tab_properties: &TabProperties)
     } else { Some(new_domain) }
 }
 
+/// Switchs the tab to a [Container](crate::container::Container)
+/// specified by the [TabDeterminant].
+/// Fails if any tab operation failed.
 async fn assign_tab(tab_id: TabId, mut tab_properties: TabProperties,
     tab_det: TabDeterminant)
 -> Result<(), CustomError> {
