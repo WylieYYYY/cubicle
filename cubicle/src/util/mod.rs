@@ -14,27 +14,35 @@ use serde::de::Visitor;
 /// Adapter for searching a key within a binary tree based data structures,
 /// discarding values that are not keys.
 pub trait KeyRangeExt<'a, K>
-where K: Ord + 'a {
+where
+    K: Ord + 'a,
+{
     /// Returns a [DoubleEndedIterator] of keys that are within the range.
-    fn key_range<R>(&'a self, range: R)
-    -> Box<dyn DoubleEndedIterator<Item = &'a K> + 'a>
-    where R: RangeBounds<K>;
+    fn key_range<R>(&'a self, range: R) -> Box<dyn DoubleEndedIterator<Item = &'a K> + 'a>
+    where
+        R: RangeBounds<K>;
 }
 
 impl<'a, K> KeyRangeExt<'a, K> for BTreeSet<K>
-where K: Ord + 'a {
-    fn key_range<R>(&'a self, range: R)
-    -> Box<dyn DoubleEndedIterator<Item = &'a K> + 'a>
-    where R: RangeBounds<K> {
+where
+    K: Ord + 'a,
+{
+    fn key_range<R>(&'a self, range: R) -> Box<dyn DoubleEndedIterator<Item = &'a K> + 'a>
+    where
+        R: RangeBounds<K>,
+    {
         Box::new(self.range(range))
     }
 }
 
 impl<'a, K, V> KeyRangeExt<'a, K> for BTreeMap<K, V>
-where K: Ord + 'a {
-    fn key_range<R>(&'a self, range: R)
-    -> Box<dyn DoubleEndedIterator<Item = &'a K> + 'a>
-    where R: RangeBounds<K> {
+where
+    K: Ord + 'a,
+{
+    fn key_range<R>(&'a self, range: R) -> Box<dyn DoubleEndedIterator<Item = &'a K> + 'a>
+    where
+        R: RangeBounds<K>,
+    {
         Box::new(BTreeMap::range(self, range).map(|(k, _)| k))
     }
 }
@@ -54,22 +62,28 @@ impl Visitor<'_> for Base64Visitor {
     type Value = String;
 
     fn expecting(&self, formatter: &mut Formatter) -> FmtResult {
-        write!(formatter, "a base-64 encoded UTF-8 string prefixed with `{}`",
-            Self::MARKER_PREFIX)
+        write!(
+            formatter,
+            "a base-64 encoded UTF-8 string prefixed with `{}`",
+            Self::MARKER_PREFIX
+        )
     }
 
     fn visit_str<E>(self, string: &str) -> Result<Self::Value, E>
-    where E: serde::de::Error {
+    where
+        E: serde::de::Error,
+    {
         use serde::de::{Error, Unexpected};
         use std::str::from_utf8;
-        let decode_error = Error::invalid_value(
-            Unexpected::Str(string), &self);
+        let decode_error = Error::invalid_value(Unexpected::Str(string), &self);
         let Some(string) = string.strip_prefix(Self::MARKER_PREFIX) else {
             return Err(decode_error);
         };
         if let Ok(b64) = BASE64_URL_SAFE_NO_PAD.decode(string) {
             Ok(String::from(from_utf8(&b64).or(Err(decode_error))?))
-        } else { Err(decode_error) }
+        } else {
+            Err(decode_error)
+        }
     }
 }
 
@@ -84,7 +98,9 @@ impl Visitor<'_> for SingleStringVisitor {
     }
 
     fn visit_string<E>(self, string: String) -> Result<Self::Value, E>
-    where E: serde::de::Error, {
+    where
+        E: serde::de::Error,
+    {
         Ok(string)
     }
 }

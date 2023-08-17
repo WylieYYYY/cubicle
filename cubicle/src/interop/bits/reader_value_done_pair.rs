@@ -11,8 +11,11 @@ use crate::util::errors::CustomError;
 /// This is implemented with [Result::unwrap] for now,
 /// as the caller's error handling has not been finalized.
 pub fn buffer(this: &JsValue) -> Uint8Array {
-    interop::get_or_standard_mismatch(this, "value").unwrap().dyn_into()
+    interop::get_or_standard_mismatch(this, "value")
+        .unwrap()
+        .dyn_into()
         .or(Err(CustomError::StandardMismatch {
-            message: String::from("expected `value` to be an ArrayBuffer")
-        })).unwrap()
+            message: String::from("expected `value` to be an ArrayBuffer"),
+        }))
+        .unwrap()
 }

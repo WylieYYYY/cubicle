@@ -5,10 +5,10 @@ use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 
-use crate::domain::EncodedDomain;
 use crate::domain::suffix::{self, Suffix};
+use crate::domain::EncodedDomain;
 use crate::interop::contextual_identities::{
-    ContextualIdentity, CookieStoreId, IdentityDetails, IdentityDetailsProvider
+    ContextualIdentity, CookieStoreId, IdentityDetails, IdentityDetailsProvider,
 };
 use crate::util::errors::CustomError;
 
@@ -19,18 +19,18 @@ pub struct ContainerOwner {
     #[serde(skip)]
     suffix_id_map: BTreeMap<Suffix, CookieStoreId>,
     #[serde(flatten)]
-    id_container_map: HashMap<CookieStoreId, Container>
+    id_container_map: HashMap<CookieStoreId, Container>,
 }
 
 impl ContainerOwner {
     /// Inserts a container, this will also add suffix mappings for lookup.
     pub fn insert(&mut self, container: Container) {
         for suffix in container.suffixes.iter() {
-            self.suffix_id_map.insert(suffix.clone(),
-                (**container.handle()).clone());
+            self.suffix_id_map
+                .insert(suffix.clone(), (**container.handle()).clone());
         }
-        self.id_container_map.insert((**container.handle())
-            .clone(), container);
+        self.id_container_map
+            .insert((**container.handle()).clone(), container);
     }
 
     /// Gets an owned container immutably,
@@ -41,16 +41,14 @@ impl ContainerOwner {
 
     /// Gets an owned container mutably,
     /// [None] if the container specified does not exist.
-    pub fn get_mut(&mut self, cookie_store_id: &CookieStoreId)
-    -> Option<&mut Container> {
+    pub fn get_mut(&mut self, cookie_store_id: &CookieStoreId) -> Option<&mut Container> {
         self.id_container_map.get_mut(cookie_store_id)
     }
 
     /// Remove an owned container, this does not remove the suffix mappings.
     /// The suffixes may be cleaned up later.
     /// Returns the popped container, or [None] if not found.
-    pub fn remove(&mut self, cookie_store_id: &CookieStoreId)
-    -> Option<Container> {
+    pub fn remove(&mut self, cookie_store_id: &CookieStoreId) -> Option<Container> {
         self.id_container_map.remove(cookie_store_id)
     }
 
@@ -59,18 +57,19 @@ impl ContainerOwner {
     /// Returns a [ContainerMatch], [None] if there is no match.
     /// Glob suffix may not match if the container with the corresponding
     /// normal suffix is removed, this may be fixed in the future.
-    pub fn match_container(&mut self, domain: EncodedDomain)
-    -> Option<ContainerMatch> {
+    pub fn match_container(&mut self, domain: EncodedDomain) -> Option<ContainerMatch> {
         let matches = suffix::match_suffix(&self.suffix_id_map, domain);
         for (matched_domain, suffix) in matches {
-            let cookie_store_id = self.suffix_id_map.get(&suffix)
-                .expect("suffix matched");
-            if let Some(container) = self.id_container_map
-                .remove(cookie_store_id) {
-                let container = self.id_container_map
-                    .entry(cookie_store_id.clone()).or_insert(container);
+            let cookie_store_id = self.suffix_id_map.get(&suffix).expect("suffix matched");
+            if let Some(container) = self.id_container_map.remove(cookie_store_id) {
+                let container = self
+                    .id_container_map
+                    .entry(cookie_store_id.clone())
+                    .or_insert(container);
                 return Some(ContainerMatch {
-                    container, matched_domain, suffix
+                    container,
+                    matched_domain,
+                    suffix,
                 });
             }
         }
@@ -85,9 +84,13 @@ impl ContainerOwner {
 
 impl FromIterator<Container> for ContainerOwner {
     fn from_iter<T>(iter: T) -> Self
-    where T: IntoIterator<Item = Container> {
+    where
+        T: IntoIterator<Item = Container>,
+    {
         let mut instance = Self::default();
-        for container in iter { instance.insert(container); }
+        for container in iter {
+            instance.insert(container);
+        }
         instance
     }
 }
@@ -97,7 +100,7 @@ impl FromIterator<Container> for ContainerOwner {
 pub struct ContainerMatch<'a> {
     pub container: &'a mut Container,
     pub matched_domain: EncodedDomain,
-    pub suffix: Suffix
+    pub suffix: Suffix,
 }
 
 /// Wrapper around [ContextualIdentity] with handle.
@@ -106,22 +109,28 @@ pub struct Container {
     handle: Arc<CookieStoreId>,
     identity: ContextualIdentity,
     pub variant: ContainerVariant,
-    pub suffixes: BTreeSet<Suffix>
+    pub suffixes: BTreeSet<Suffix>,
 }
 
 impl Container {
     /// Creates a new container, fails if the browser indicates so.
-    pub async fn create(details: IdentityDetails,
-        variant: ContainerVariant, suffixes: BTreeSet<Suffix>)
-    -> Result<Self, CustomError> {
+    pub async fn create(
+        details: IdentityDetails,
+        variant: ContainerVariant,
+        suffixes: BTreeSet<Suffix>,
+    ) -> Result<Self, CustomError> {
         let identity = ContextualIdentity::create(details).await?;
         let handle = Arc::new(identity.cookie_store_id().clone());
-        Ok(Self { handle, identity, variant, suffixes })
+        Ok(Self {
+            handle,
+            identity,
+            variant,
+            suffixes,
+        })
     }
 
     /// Updates this container using the given [IdentityDetails].
-    pub async fn update(&mut self, details: IdentityDetails)
-    -> Result<(), CustomError> {
+    pub async fn update(&mut self, details: IdentityDetails) -> Result<(), CustomError> {
         self.identity.update(details).await.and(Ok(()))
     }
 
@@ -137,7 +146,7 @@ impl Container {
     pub async fn delete_if_empty(&mut self) -> Result<bool, CustomError> {
         match Arc::get_mut(&mut self.handle) {
             Some(_cookie_store_id) => self.delete().await.and(Ok(true)),
-            None => Ok(false)
+            None => Ok(false),
         }
     }
 
@@ -162,8 +171,9 @@ impl From<ContextualIdentity> for Container {
     fn from(identity: ContextualIdentity) -> Self {
         Self {
             handle: Arc::new(identity.cookie_store_id().clone()),
-            identity, variant: ContainerVariant::Permanent,
-            suffixes: BTreeSet::default()
+            identity,
+            variant: ContainerVariant::Permanent,
+            suffixes: BTreeSet::default(),
         }
     }
 }
@@ -175,5 +185,6 @@ impl From<ContextualIdentity> for Container {
 ///   generated, and should be deleted once all tabs within it have closed.
 #[derive(Deserialize, Eq, PartialEq, Serialize)]
 pub enum ContainerVariant {
-    Permanent, Temporary
+    Permanent,
+    Temporary,
 }

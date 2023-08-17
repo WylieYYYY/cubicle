@@ -3,10 +3,10 @@
 use serde::{Deserialize, Serialize};
 
 use crate::container::{Container, ContainerOwner};
-use crate::preferences::Preferences;
 use crate::domain::psl::Psl;
 use crate::interop::contextual_identities::ContextualIdentity;
 use crate::interop::storage;
+use crate::preferences::Preferences;
 use crate::util::errors::CustomError;
 
 /// Persisting data for determining which container to switch to.
@@ -15,7 +15,7 @@ pub struct GlobalContext {
     #[serde(flatten)]
     pub containers: ContainerOwner,
     pub psl: Psl,
-    pub preferences: Preferences
+    pub preferences: Preferences,
 }
 
 impl GlobalContext {
@@ -45,7 +45,10 @@ impl GlobalContext {
     pub async fn fetch_all_containers(&mut self) -> Result<(), CustomError> {
         self.containers = ContainerOwner::from_iter(
             ContextualIdentity::fetch_all()
-            .await?.into_iter().map(Container::from));
+                .await?
+                .into_iter()
+                .map(Container::from),
+        );
         Ok(())
     }
 }
@@ -53,5 +56,7 @@ impl GlobalContext {
 /// Versioning of [GlobalContext] for migrating and detecteing older version.
 /// The versioning scheme is to be decided in the next release.
 #[derive(Default, Deserialize, Eq, PartialEq, Serialize)]
-struct Version { pub version: (i16, i16, i16) }
+struct Version {
+    pub version: (i16, i16, i16),
+}
 const CURRENT_VERSION: Version = Version { version: (0, 1, 0) };

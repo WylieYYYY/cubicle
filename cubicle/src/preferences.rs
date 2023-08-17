@@ -8,8 +8,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::container::{Container, ContainerVariant};
 use crate::context::GlobalContext;
-use crate::domain::EncodedDomain;
 use crate::domain::suffix::{Suffix, SuffixType};
+use crate::domain::EncodedDomain;
 use crate::interop::contextual_identities::{CookieStoreId, IdentityDetails};
 use crate::interop::storage;
 use crate::util::errors::CustomError;
@@ -18,7 +18,7 @@ use crate::util::errors::CustomError;
 #[derive(Default, Deserialize, Serialize)]
 pub struct Preferences {
     pub assign_strategy: ContainerAssignStrategy,
-    pub eject_strategy: ContainerEjectStrategy
+    pub eject_strategy: ContainerEjectStrategy,
 }
 
 /// Assigning strategy for tabs that are previously not contained,
@@ -33,7 +33,7 @@ pub struct Preferences {
 pub enum ContainerAssignStrategy {
     #[derivative(Default)]
     SuffixedTemporary,
-    IsolatedTemporary
+    IsolatedTemporary,
 }
 
 impl ContainerAssignStrategy {
@@ -41,11 +41,12 @@ impl ContainerAssignStrategy {
     /// Returns a container handle that must be properly released.
     /// Fails if the browser indicates so.
     #[must_use = "clean up must be done before releasing the handle"]
-    pub async fn match_container(&self, global_context: &mut GlobalContext,
-        domain: EncodedDomain)
-    -> Result<Arc<CookieStoreId>, CustomError> {
-        if let Some(container_match) = global_context
-            .containers.match_container(domain.clone()) {
+    pub async fn match_container(
+        &self,
+        global_context: &mut GlobalContext,
+        domain: EncodedDomain,
+    ) -> Result<Arc<CookieStoreId>, CustomError> {
+        if let Some(container_match) = global_context.containers.match_container(domain.clone()) {
             return Ok(Arc::clone(container_match.container.handle()));
         }
 
@@ -53,14 +54,15 @@ impl ContainerAssignStrategy {
         details.name = String::from("Temporary Container ");
         let mut suffixes = BTreeSet::default();
         if *self == ContainerAssignStrategy::SuffixedTemporary {
-            let domain = global_context.psl.match_suffix(
-                domain.clone()).unwrap_or(domain);
+            let domain = global_context
+                .psl
+                .match_suffix(domain.clone())
+                .unwrap_or(domain);
             details.name.push_str(domain.raw());
             suffixes.insert(Suffix::new(SuffixType::Normal, domain));
         }
 
-        let container = Container::create(details,
-            ContainerVariant::Temporary, suffixes).await?;
+        let container = Container::create(details, ContainerVariant::Temporary, suffixes).await?;
         let container_handle = Arc::clone(container.handle());
         storage::store_single_entry(&container_handle, &container).await?;
         global_context.containers.insert(container);
@@ -84,5 +86,5 @@ pub enum ContainerEjectStrategy {
     #[derivative(Default)]
     IsolatedTemporary,
     RemainInPlace,
-    Reassignment
+    Reassignment,
 }

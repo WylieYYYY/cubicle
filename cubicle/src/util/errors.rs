@@ -30,7 +30,10 @@ pub enum CustomError {
 
     // predictable errors that are common
     #[error(transparent)]
-    InvalidDomain { #[from] source: idna::Errors },
+    InvalidDomain {
+        #[from]
+        source: idna::Errors,
+    },
     #[error("invalid suffix format `{suffix}`")]
-    InvalidSuffix { suffix: String }
+    InvalidSuffix { suffix: String },
 }

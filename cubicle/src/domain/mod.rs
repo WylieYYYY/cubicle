@@ -10,15 +10,22 @@ use serde::{Deserialize, Serialize};
 
 /// Domain that can be encoded as an international domain name.
 #[derive(Clone, Deserialize, Eq, Serialize)]
-pub struct EncodedDomain { encoded: String, raw: String }
+pub struct EncodedDomain {
+    encoded: String,
+    raw: String,
+}
 
 impl EncodedDomain {
     /// Encoded version of the domain,
     /// safe to use for checking for domain duplication.
-    pub fn encoded(&self) -> &str { &self.encoded }
+    pub fn encoded(&self) -> &str {
+        &self.encoded
+    }
 
     /// Unencoded version of the domain.
-    pub fn raw(&self) -> &str { &self.raw }
+    pub fn raw(&self) -> &str {
+        &self.raw
+    }
 }
 
 impl EncodedDomain {
@@ -26,15 +33,20 @@ impl EncodedDomain {
     /// Since segments are non-empty and the top level is a valid domain,
     /// it can be returned as an [EncodedDomain].
     pub fn tld(&self) -> Self {
-        Self::try_from(self.encoded.split('.').last()
-            .expect("string split has at least one element"))
-            .expect("validity checked from existing instance")
+        Self::try_from(
+            self.encoded
+                .split('.')
+                .last()
+                .expect("string split has at least one element"),
+        )
+        .expect("validity checked from existing instance")
     }
 
     /// Parent of this domain, [None] if this is a top level domain.
     pub fn parent(&self) -> Option<Self> {
-        self.encoded.split_once('.').map(|parent| Self::try_from(
-            parent.1).expect("validity checked from existing instance"))
+        self.encoded.split_once('.').map(|parent| {
+            Self::try_from(parent.1).expect("validity checked from existing instance")
+        })
     }
 
     /// This domain in reverse domain name notation,
@@ -54,16 +66,23 @@ impl TryFrom<&str> for EncodedDomain {
     /// May be changed to [CustomError::InvalidDomain](crate::util::errors::CustomError::InvalidDomain)
     /// later.
     fn try_from(value: &str) -> Result<Self, Self::Error> {
-        let compat_value = idna::domain_to_ascii_strict(
-            &format!("{}.example", value))?;
-        let encoded = String::from(compat_value.strip_suffix(".example")
-            .expect("suffix preserved from encoded domain"));
-        Ok(Self { encoded, raw: String::from(value) })
+        let compat_value = idna::domain_to_ascii_strict(&format!("{}.example", value))?;
+        let encoded = String::from(
+            compat_value
+                .strip_suffix(".example")
+                .expect("suffix preserved from encoded domain"),
+        );
+        Ok(Self {
+            encoded,
+            raw: String::from(value),
+        })
     }
 }
 
 impl PartialEq for EncodedDomain {
-    fn eq(&self, other: &Self) -> bool { self.encoded == other.encoded }
+    fn eq(&self, other: &Self) -> bool {
+        self.encoded == other.encoded
+    }
 }
 
 impl PartialOrd for EncodedDomain {
@@ -73,6 +92,7 @@ impl PartialOrd for EncodedDomain {
 }
 impl Ord for EncodedDomain {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.partial_cmp(other).expect("controlled PartialOrd implementation")
+        self.partial_cmp(other)
+            .expect("controlled PartialOrd implementation")
     }
 }

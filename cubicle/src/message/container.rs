@@ -13,18 +13,20 @@ use crate::util::errors::CustomError;
 
 /// Message type for container operations that are not tab related.
 #[derive(Deserialize)]
-#[serde(rename_all="snake_case", tag="action")]
+#[serde(rename_all = "snake_case", tag = "action")]
 pub enum ContainerAction {
     SubmitIdentityDetails {
         cookie_store_id: Option<CookieStoreId>,
-        details: IdentityDetails
+        details: IdentityDetails,
     },
     UpdateSuffix {
         cookie_store_id: CookieStoreId,
         old_suffix: String,
-        new_suffix: String
+        new_suffix: String,
     },
-    DeleteContainer { cookie_store_id: CookieStoreId }
+    DeleteContainer {
+        cookie_store_id: CookieStoreId,
+    },
 }
 
 impl ContainerAction {
@@ -32,40 +34,56 @@ impl ContainerAction {
     /// returns the [CookieStoreId] of the newly focused container.
     /// Fails if the browser indicates so.
     pub async fn act(
-        self, global_context: &mut impl DerefMut<Target = GlobalContext>
+        self,
+        global_context: &mut impl DerefMut<Target = GlobalContext>,
     ) -> Result<CookieStoreId, CustomError> {
         use ContainerAction::*;
         match self {
-            SubmitIdentityDetails { cookie_store_id, details } => {
+            SubmitIdentityDetails {
+                cookie_store_id,
+                details,
+            } => {
                 let cookie_store_id = match cookie_store_id {
                     Some(cookie_store_id) => {
-                        let container = global_context.containers
+                        let container = global_context
+                            .containers
                             .get_mut(&cookie_store_id)
                             .expect("valid ID passed from message");
                         container.update(details).await?;
                         (**container.handle()).clone()
-                    },
+                    }
                     None => {
-                        let container = Container::create(details,
+                        let container = Container::create(
+                            details,
                             ContainerVariant::Permanent,
-                            BTreeSet::default()).await?;
+                            BTreeSet::default(),
+                        )
+                        .await?;
                         let cookie_store_id = (**container.handle()).clone();
                         global_context.containers.insert(container);
                         cookie_store_id
                     }
                 };
                 Ok(cookie_store_id)
-            },
+            }
 
-            UpdateSuffix { cookie_store_id, old_suffix, new_suffix } => {
-                let old_suffix = if old_suffix.is_empty() { None } else {
-                    Some(Suffix::try_from(&*old_suffix)
-                        .expect("valid suffix passed from message"))
+            UpdateSuffix {
+                cookie_store_id,
+                old_suffix,
+                new_suffix,
+            } => {
+                let old_suffix = if old_suffix.is_empty() {
+                    None
+                } else {
+                    Some(Suffix::try_from(&*old_suffix).expect("valid suffix passed from message"))
                 };
-                let new_suffix = if new_suffix.is_empty() { None } else {
+                let new_suffix = if new_suffix.is_empty() {
+                    None
+                } else {
                     Some(Suffix::try_from(&*new_suffix)?)
                 };
-                let container = global_context.containers
+                let container = global_context
+                    .containers
                     .get_mut(&cookie_store_id)
                     .expect("valid ID passed from message");
                 if let Some(suffix) = old_suffix {
@@ -78,7 +96,8 @@ impl ContainerAction {
             }
 
             DeleteContainer { cookie_store_id } => {
-                let container = global_context.containers
+                let container = global_context
+                    .containers
                     .get_mut(&cookie_store_id)
                     .expect("valid ID passed from message");
                 container.delete().await?;

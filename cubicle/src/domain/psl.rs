@@ -8,14 +8,17 @@ use async_std::io::prelude::*;
 use chrono::naive::NaiveDate;
 use serde::{Deserialize, Serialize};
 
-use super::EncodedDomain;
 use super::suffix::{self, Suffix, SuffixType};
+use super::EncodedDomain;
 use crate::util::errors::CustomError;
 
 /// Public suffix list, used for checking if domains are controlled by
 /// the same entity, and if containers should span across them.
 #[derive(Default, Deserialize, Serialize)]
-pub struct Psl { last_updated: NaiveDate, set: BTreeSet<Suffix> }
+pub struct Psl {
+    last_updated: NaiveDate,
+    set: BTreeSet<Suffix>,
+}
 
 impl Psl {
     /// Reads and constructs a public suffix list from a stream.
@@ -23,13 +26,20 @@ impl Psl {
     /// comments must start from column 0.
     /// Fails with [CustomError::IoError] if the stream ends unexpectedly,
     /// or with [CustomError::InvalidSuffix].
-    pub async fn from_stream<T>(stream: &mut T, last_updated: NaiveDate)
-    -> Result<Self, CustomError>
-    where T: BufRead + Unpin {
+    pub async fn from_stream<T>(
+        stream: &mut T,
+        last_updated: NaiveDate,
+    ) -> Result<Self, CustomError>
+    where
+        T: BufRead + Unpin,
+    {
         let mut set = BTreeSet::default();
         let mut buf = String::new();
-        while let 1.. = stream.read_line(&mut buf).await
-            .map_err(|error| CustomError::IoError(error.kind()))? {
+        while let 1.. = stream
+            .read_line(&mut buf)
+            .await
+            .map_err(|error| CustomError::IoError(error.kind()))?
+        {
             let Some(strip) = buf.strip_suffix('\n').map(String::from) else {
                return Err(CustomError::IoError(ErrorKind::OutOfMemory));
             };
@@ -45,18 +55,25 @@ impl Psl {
     /// Returns a domain which is equal to the input, or is an ancestor of it.
     /// [None] if the list does not specify the condition for the domain.
     /// Domains that share the same can share cookies safely.
-    pub fn match_suffix(&self, domain: EncodedDomain)
-    -> Option<EncodedDomain> {
+    pub fn match_suffix(&self, domain: EncodedDomain) -> Option<EncodedDomain> {
         suffix::match_suffix(&self.set, domain).find_map(|(domain, suffix)| {
             let is_exclusion = *suffix.suffix_type() == SuffixType::Exclusion;
-            if is_exclusion { None } else { Some(domain) }
+            if is_exclusion {
+                None
+            } else {
+                Some(domain)
+            }
         })
     }
 
     /// The number of suffixes stored.
-    pub fn len(&self) -> usize { self.set.len() }
+    pub fn len(&self) -> usize {
+        self.set.len()
+    }
 
     /// Last updated date, time is not stored as
     /// this is only used for rate limiting.
-    pub fn last_updated(&self) -> NaiveDate { self.last_updated }
+    pub fn last_updated(&self) -> NaiveDate {
+        self.last_updated
+    }
 }

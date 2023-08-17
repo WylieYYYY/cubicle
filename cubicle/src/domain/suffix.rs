@@ -14,31 +14,40 @@ use crate::util::{errors::CustomError, KeyRangeExt};
 /// Looks through a binary tree based data structure of suffixes
 /// to search for ones that match the domain or its ancestors.
 /// Returns an iterator of tuples of the matched domains and suffixes.
-pub fn match_suffix<'a, T>(set: &'a T, domain: EncodedDomain)
--> impl Iterator<Item = (EncodedDomain, Suffix)> + 'a
-where T: KeyRangeExt<'a, Suffix> + 'a {
+pub fn match_suffix<'a, T>(
+    set: &'a T,
+    domain: EncodedDomain,
+) -> impl Iterator<Item = (EncodedDomain, Suffix)> + 'a
+where
+    T: KeyRangeExt<'a, Suffix> + 'a,
+{
     let mut domain = Some(domain);
     let domain_iter = iter::repeat_with(move || {
         let parent = domain.as_ref().and_then(EncodedDomain::parent);
         mem::replace(&mut domain, parent)
-    }).map_while(convert::identity);
+    })
+    .map_while(convert::identity);
     domain_iter.filter_map(|domain| {
-        match_suffix_exact(set, &domain.parent()?)
-            .map(|suffix| (domain, suffix))
+        match_suffix_exact(set, &domain.parent()?).map(|suffix| (domain, suffix))
     })
 }
 
 /// Looks through a binary tree based data structure of suffixes
 /// to search for one that exactly matches the domain.
-fn match_suffix_exact<'a, T>(set: &'a T, domain: &EncodedDomain)
--> Option<Suffix>
-where T: KeyRangeExt<'a, Suffix> + 'a {
+fn match_suffix_exact<'a, T>(set: &'a T, domain: &EncodedDomain) -> Option<Suffix>
+where
+    T: KeyRangeExt<'a, Suffix> + 'a,
+{
     let end = Suffix::new(SuffixType::Normal, domain.clone());
     let start = if let Some(parent) = domain.parent() {
         Suffix::new(SuffixType::Glob, parent)
-    } else { end.clone() };
+    } else {
+        end.clone()
+    };
     let mut search_range = set.key_range(start..=end);
-    search_range.rfind(|suffix| suffix.match_ordering(domain).is_eq()).cloned()
+    search_range
+        .rfind(|suffix| suffix.match_ordering(domain).is_eq())
+        .cloned()
 }
 
 /// Valid suffix that consists of a [SuffixType] and an [EncodedDomain].
@@ -46,13 +55,19 @@ where T: KeyRangeExt<'a, Suffix> + 'a {
 /// The ordering is organized similarly as the
 /// published suffix list for quick searching.
 #[derive(Clone, Deserialize, Eq, PartialEq, Serialize)]
-pub struct Suffix { suffix_type: SuffixType, domain: EncodedDomain }
+pub struct Suffix {
+    suffix_type: SuffixType,
+    domain: EncodedDomain,
+}
 
 impl Suffix {
     /// Creates a suffix from its individual components.
     /// The instance is guarenteed to be well-formed.
     pub fn new(suffix_type: SuffixType, domain: EncodedDomain) -> Self {
-        Self { suffix_type, domain }
+        Self {
+            suffix_type,
+            domain,
+        }
     }
 
     /// Check if this suffix matches the given domain.
@@ -62,9 +77,15 @@ impl Suffix {
         let self_reversed = self.domain.reverse();
         let globbed: Box<dyn Iterator<Item = &str>> = {
             if self.suffix_type == SuffixType::Glob {
-                Box::new(iter::once(domain.reverse().last()
-                    .expect("string split has at least one element")))
-            } else { Box::new(iter::empty::<&str>()) }
+                Box::new(iter::once(
+                    domain
+                        .reverse()
+                        .last()
+                        .expect("string split has at least one element"),
+                ))
+            } else {
+                Box::new(iter::empty::<&str>())
+            }
         };
         domain.reverse().cmp(self_reversed.chain(globbed))
     }
@@ -83,7 +104,9 @@ impl Suffix {
     /// The type of the suffix, primarily to check if it is an
     /// [Exclusion](SuffixType::Exclusion).
     /// May be replaced by an `is_exclusion` function.
-    pub fn suffix_type(&self) -> &SuffixType { &self.suffix_type }
+    pub fn suffix_type(&self) -> &SuffixType {
+        &self.suffix_type
+    }
 }
 
 impl TryFrom<&str> for Suffix {
@@ -94,17 +117,24 @@ impl TryFrom<&str> for Suffix {
     /// or if the contained domain cannot be encoded as
     /// an international domain name.
     fn try_from(value: &str) -> Result<Self, Self::Error> {
-        for suffix_type in SuffixType::iter().cycle()
-            .skip(SuffixType::INDEX_AFTER_NORMAL) {
+        for suffix_type in SuffixType::iter()
+            .cycle()
+            .skip(SuffixType::INDEX_AFTER_NORMAL)
+        {
             if let Some(domain) = value.strip_prefix(suffix_type.prefix()) {
-                return if domain.is_empty() || domain.split('.')
-                    .find(|&segment| segment.is_empty()).is_some() {
+                return if domain.is_empty()
+                    || domain
+                        .split('.')
+                        .find(|&segment| segment.is_empty())
+                        .is_some()
+                {
                     Err(CustomError::InvalidSuffix {
-                        suffix: String::from(domain)
+                        suffix: String::from(domain),
                     })
                 } else {
                     Ok(Self {
-                        suffix_type, domain: EncodedDomain::try_from(domain)?
+                        suffix_type,
+                        domain: EncodedDomain::try_from(domain)?,
                     })
                 };
             }
@@ -116,30 +146,37 @@ impl TryFrom<&str> for Suffix {
 impl PartialOrd for Suffix {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         let tld_ordering = self.domain.tld().cmp(&other.domain.tld());
-        let level_ordering = self.domain.reverse().count()
+        let level_ordering = self
+            .domain
+            .reverse()
+            .count()
             .cmp(&other.domain.reverse().count());
         let type_ordering = self.suffix_type.cmp(&other.suffix_type);
         let alpha_ordering = self.domain.reverse().cmp(other.domain.reverse());
-        Some(tld_ordering
-            .then(level_ordering)
-            .then(type_ordering)
-            .then(alpha_ordering))
+        Some(
+            tld_ordering
+                .then(level_ordering)
+                .then(type_ordering)
+                .then(alpha_ordering),
+        )
     }
 }
 impl Ord for Suffix {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.partial_cmp(other).expect("controlled PartialOrd implementation")
+        self.partial_cmp(other)
+            .expect("controlled PartialOrd implementation")
     }
 }
 
 /// Types for suffixes.
 /// The ordering is the result of suffix not storing glob star
 /// as a part of the domain.
-#[derive(
-    Clone, Deserialize, EnumIter, Eq,
-    Ord, PartialEq, PartialOrd, Serialize
-)]
-pub enum SuffixType { Exclusion, Normal, Glob }
+#[derive(Clone, Deserialize, EnumIter, Eq, Ord, PartialEq, PartialOrd, Serialize)]
+pub enum SuffixType {
+    Exclusion,
+    Normal,
+    Glob,
+}
 
 impl SuffixType {
     /// Number of types to skip for better prefix matching.
@@ -152,7 +189,7 @@ impl SuffixType {
         match self {
             SuffixType::Glob => "*.",
             SuffixType::Exclusion => "!",
-            SuffixType::Normal => ""
+            SuffixType::Normal => "",
         }
     }
 }

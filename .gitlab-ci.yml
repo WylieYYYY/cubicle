@@ -1,9 +1,16 @@
+image: registry.gitlab.com/wylieyyyy/cubicle:latest
+
 stages:
+  - lint
   - build
+
+lint:
+  stage: lint
+  script:
+    - cargo fmt --check
 
 build:
   stage: build
-  image: registry.gitlab.com/wylieyyyy/cubicle:latest
   script:
     - cargo build --target wasm32-unknown-unknown --verbose
     - wasm-bindgen --target web target/wasm32-unknown-unknown/debug/*.wasm --out-dir build/

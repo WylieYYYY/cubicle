@@ -11,5 +11,5 @@ use crate::interop::contextual_identities::CookieStoreId;
 /// Currently this just checks for a domain change.
 pub struct TabDeterminant {
     pub container_handle: Arc<CookieStoreId>,
-    pub domain: EncodedDomain
+    pub domain: EncodedDomain,
 }

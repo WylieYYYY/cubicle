@@ -5,9 +5,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use serde::{Deserialize, Serialize};
 use strum::EnumCount;
-use strum_macros::{
-    Display, EnumCount as EnumCountMacro, EnumIter, EnumString, FromRepr
-};
+use strum_macros::{Display, EnumCount as EnumCountMacro, EnumIter, EnumString, FromRepr};
 use tera::{Context, Tera};
 
 /// Main styling structure for contextual identity,
@@ -15,15 +13,18 @@ use tera::{Context, Tera};
 /// [Cycle](IdentityColor::Cycle) before deserialization.
 #[derive(Deserialize, Serialize)]
 pub struct IdentityDetails {
-    pub color: IdentityColor, pub icon: IdentityIcon, pub name: String
+    pub color: IdentityColor,
+    pub icon: IdentityIcon,
+    pub name: String,
 }
 
 impl Default for IdentityDetails {
     /// Default styling for temporary containers.
     fn default() -> Self {
         Self {
-            color: IdentityColor::Cycle, icon: IdentityIcon::Circle,
-            name: String::from("Cubicle")
+            color: IdentityColor::Cycle,
+            icon: IdentityIcon::Circle,
+            name: String::from("Cubicle"),
         }
     }
 }
@@ -39,16 +40,33 @@ pub trait IdentityDetailsProvider {
 /// [Cycle](IdentityColor::Cycle) may be separated into its own enum in the
 /// future to avoid incorrect deserialization.
 #[derive(
-    Clone, Deserialize, Display, EnumCountMacro, EnumIter, EnumString, Eq,
-    FromRepr, PartialEq, Serialize
+    Clone,
+    Deserialize,
+    Display,
+    EnumCountMacro,
+    EnumIter,
+    EnumString,
+    Eq,
+    FromRepr,
+    PartialEq,
+    Serialize,
 )]
-#[serde(rename_all="lowercase")]
-#[strum(serialize_all="lowercase")]
+#[serde(rename_all = "lowercase")]
+#[strum(serialize_all = "lowercase")]
 pub enum IdentityColor {
-    Blue, Turquoise, Green, Yellow, Orange,
-    Red, Pink, Purple, Toolbar,
-    #[strum(disabled)] Cycle,
-    #[strum(disabled, default)] Unknown(String)
+    Blue,
+    Turquoise,
+    Green,
+    Yellow,
+    Orange,
+    Red,
+    Pink,
+    Purple,
+    Toolbar,
+    #[strum(disabled)]
+    Cycle,
+    #[strum(disabled, default)]
+    Unknown(String),
 }
 
 impl IdentityColor {
@@ -56,10 +74,8 @@ impl IdentityColor {
     /// the cycle is shared globally.
     pub fn new_rolling_color() -> Self {
         static COLOR_INDEX: AtomicUsize = AtomicUsize::new(0);
-        let new_index = COLOR_INDEX.fetch_add(1,
-            Ordering::Relaxed) % (Self::COUNT - 2);
-        Self::from_repr(new_index)
-            .expect("controlled representation input range")
+        let new_index = COLOR_INDEX.fetch_add(1, Ordering::Relaxed) % (Self::COUNT - 2);
+        Self::from_repr(new_index).expect("controlled representation input range")
     }
 }
 
@@ -70,12 +86,24 @@ const ICON_URL_TEMPLATE: &str = "resource://usercontext-content/{{name}}.svg";
 /// Known supported icon names, [Unknown](IdentityIcon::Unknown) is for
 /// potentially new icons in the future.
 #[derive(Clone, Deserialize, Display, EnumIter, EnumString, Serialize)]
-#[serde(rename_all="lowercase")]
-#[strum(serialize_all="lowercase")]
+#[serde(rename_all = "lowercase")]
+#[strum(serialize_all = "lowercase")]
 pub enum IdentityIcon {
-    Fingerprint, Briefcase, Dollar, Cart, Circle, Gift, Vacation,
-    Food, Fruit, Pet, Tree, Chill, Fence,
-    #[strum(disabled, default)] Unknown(String)
+    Fingerprint,
+    Briefcase,
+    Dollar,
+    Cart,
+    Circle,
+    Gift,
+    Vacation,
+    Food,
+    Fruit,
+    Pet,
+    Tree,
+    Chill,
+    Fence,
+    #[strum(disabled, default)]
+    Unknown(String),
 }
 
 impl IdentityIcon {

@@ -8,15 +8,13 @@ use std::hash::Hash;
 pub use super::bits::identity_details::*;
 
 use base64::prelude::*;
-use js_sys::{Promise, Object};
+use js_sys::{Object, Promise};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
 
 use crate::interop;
-use crate::util::{
-    Base64Visitor, errors::CustomError, SingleStringVisitor
-};
+use crate::util::{errors::CustomError, Base64Visitor, SingleStringVisitor};
 
 #[wasm_bindgen]
 extern "C" {
@@ -33,13 +31,18 @@ extern "C" {
 /// Browser feature allowing the separation of sites' information
 /// into different identities.
 #[derive(Deserialize, Serialize)]
-#[serde(rename_all="camelCase")]
+#[serde(rename_all = "camelCase")]
 pub struct ContextualIdentity {
-    #[serde(deserialize_with="CookieStoreId::deserialize_inner",
-        serialize_with="CookieStoreId::serialize_inner")]
+    #[serde(
+        deserialize_with = "CookieStoreId::deserialize_inner",
+        serialize_with = "CookieStoreId::serialize_inner"
+    )]
     cookie_store_id: CookieStoreId,
-    color: IdentityColor, _color_code: String, icon: IdentityIcon,
-    _icon_url: String, name: String
+    color: IdentityColor,
+    _color_code: String,
+    icon: IdentityIcon,
+    _icon_url: String,
+    name: String,
 }
 
 impl ContextualIdentity {
@@ -48,32 +51,32 @@ impl ContextualIdentity {
     /// Fails if the browser indicates so.
     pub async fn fetch_all() -> Result<Vec<Self>, CustomError> {
         let op_error = CustomError::FailedContainerOperation {
-            verb: String::from("fetch all")
+            verb: String::from("fetch all"),
         };
         super::cast_or_standard_mismatch(
             JsFuture::from(identity_query(JsValue::from(Object::default())))
-            .await.or(Err(op_error))?)
+                .await
+                .or(Err(op_error))?,
+        )
     }
 
     /// Creates an identity using the given details.
     /// Fails if the browser indicates so.
-    pub async fn create(mut details: IdentityDetails)
-    -> Result<Self, CustomError> {
+    pub async fn create(mut details: IdentityDetails) -> Result<Self, CustomError> {
         if details.color == IdentityColor::Cycle {
             details.color = IdentityColor::new_rolling_color();
         }
-        let identity = JsFuture::from(identity_create(
-            interop::to_jsvalue(&details))).await
+        let identity = JsFuture::from(identity_create(interop::to_jsvalue(&details)))
+            .await
             .or(Err(CustomError::FailedContainerOperation {
-                verb: String::from("create")
+                verb: String::from("create"),
             }))?;
         super::cast_or_standard_mismatch(identity)
     }
 
     /// Updates the identity and the details stored
     /// using the given [IdentityDetails].
-    pub async fn update(&mut self, details: IdentityDetails)
-    -> Result<(), CustomError> {
+    pub async fn update(&mut self, details: IdentityDetails) -> Result<(), CustomError> {
         *self = self.cookie_store_id.update_identity(details).await?;
         Ok(())
     }
@@ -87,16 +90,16 @@ impl ContextualIdentity {
 impl IdentityDetailsProvider for ContextualIdentity {
     fn identity_details(&self) -> IdentityDetails {
         IdentityDetails {
-            color: self.color.clone(), icon: self.icon.clone(),
-            name: self.name.clone()
+            color: self.color.clone(),
+            icon: self.icon.clone(),
+            name: self.name.clone(),
         }
     }
 }
 
-impl Debug for ContextualIdentity{
+impl Debug for ContextualIdentity {
     fn fmt(&self, formatter: &mut Formatter<'_>) -> FmtResult {
-        formatter.write_fmt(format_args!(
-            "contextual identity `{}`", self.name))
+        formatter.write_fmt(format_args!("contextual identity `{}`", self.name))
     }
 }
 impl Display for ContextualIdentity {
@@ -110,14 +113,18 @@ impl Display for ContextualIdentity {
 /// [CookieStoreId::deserialize_inner] or [CookieStoreId::serialize_inner].
 /// All operations may fail if the identity specified by the ID does not exist.
 #[derive(Clone, Eq, Hash, PartialEq)]
-pub struct CookieStoreId { inner: String }
+pub struct CookieStoreId {
+    inner: String,
+}
 
 impl CookieStoreId {
     /// Creates a new ID by trusting the given value.
     /// May be removed as this is used for ad hoc tab request only
     /// in [super::tabs::current_tab_cookie_store_id].
     pub fn new(cookie_store_id: String) -> Self {
-        Self { inner: cookie_store_id }
+        Self {
+            inner: cookie_store_id,
+        }
     }
 
     /// Updates the [IdentityDetails] of the identity.
@@ -125,17 +132,20 @@ impl CookieStoreId {
     /// there is a helper [ContextualIdentity::update] for ensuring that
     /// the existing identity is updated.
     /// Fails if the browser indicates so.
-    pub async fn update_identity(&self, mut details: IdentityDetails)
-    -> Result<ContextualIdentity, CustomError> {
+    pub async fn update_identity(
+        &self,
+        mut details: IdentityDetails,
+    ) -> Result<ContextualIdentity, CustomError> {
         if details.color == IdentityColor::Cycle {
             details.color = IdentityColor::new_rolling_color();
         }
         let error = CustomError::FailedContainerOperation {
-            verb: String::from("update")
+            verb: String::from("update"),
         };
         let details = interop::to_jsvalue(&details);
         let identity = JsFuture::from(identity_update(&self.inner, details))
-            .await.or(Err(error))?;
+            .await
+            .or(Err(error))?;
         super::cast_or_standard_mismatch(identity)
     }
 
@@ -144,26 +154,31 @@ impl CookieStoreId {
     /// and the user is responsible for the cleanup.
     /// Fails if the browser indicates so.
     pub async fn delete_identity(&self) -> Result<(), CustomError> {
-        let removal_result = JsFuture::from(identity_remove(
-            &self.inner)).await;
+        let removal_result = JsFuture::from(identity_remove(&self.inner)).await;
         if removal_result.is_err() {
             Err(CustomError::FailedContainerOperation {
-                verb: String::from("delete")
+                verb: String::from("delete"),
             })
-        } else { Ok(()) }
+        } else {
+            Ok(())
+        }
     }
 
     /// Deserializes from a real unencoded value.
     pub fn deserialize_inner<'de, D>(deserializer: D) -> Result<Self, D::Error>
-    where D: Deserializer<'de> {
+    where
+        D: Deserializer<'de>,
+    {
         Ok(Self {
-            inner: deserializer.deserialize_string(SingleStringVisitor)?
+            inner: deserializer.deserialize_string(SingleStringVisitor)?,
         })
     }
 
     /// Serializes into the real unencoded value.
     pub fn serialize_inner<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where S: Serializer {
+    where
+        S: Serializer,
+    {
         serializer.serialize_str(&self.inner)
     }
 }
@@ -173,22 +188,29 @@ impl Default for CookieStoreId {
     /// Unused and may be removed as we don't care if the origin identity is
     /// the default, and we don't assign tabs to the default identity.
     fn default() -> Self {
-        Self { inner: String::from("firefox-default") }
+        Self {
+            inner: String::from("firefox-default"),
+        }
     }
 }
 
 impl<'de> Deserialize<'de> for CookieStoreId {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where D: Deserializer<'de> {
-        Ok(Self { inner: deserializer.deserialize_str(Base64Visitor)? })
+    where
+        D: Deserializer<'de>,
+    {
+        Ok(Self {
+            inner: deserializer.deserialize_str(Base64Visitor)?,
+        })
     }
 }
 
 impl Serialize for CookieStoreId {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where S: Serializer {
+    where
+        S: Serializer,
+    {
         let b64 = BASE64_URL_SAFE_NO_PAD.encode(&self.inner);
-        serializer.serialize_str(&(String::from(
-            Base64Visitor::MARKER_PREFIX) + &b64))
+        serializer.serialize_str(&(String::from(Base64Visitor::MARKER_PREFIX) + &b64))
     }
 }
