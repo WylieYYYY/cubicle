@@ -1,16 +1,24 @@
 'use strict';
 
-import {state_update_redirect} from './context.js';
+import {stateUpdateRedirect} from './context.js';
 
-function message_container_deletion() {
-    const selectContainer = document.getElementById('select-container');
-    state_update_redirect('container_action', {
-        action: 'delete_container',
-        cookie_store_id: selectContainer.value
-    });
+/**
+ * Messages the background that a container deletion is requested,
+ * then updates the popup.
+ */
+function messageContainerDeletion() {
+  const selectContainer = document.getElementById('select-container');
+  stateUpdateRedirect('container_action', {
+    action: 'delete_container',
+    cookie_store_id: selectContainer.value,
+  });
 }
 
+/**
+ * Entry for the deletion prompt.
+ * Mainly for attaching listeners.
+ */
 export default function main() {
-    document.getElementById('btn-yes')
-        .addEventListener('click', message_container_deletion);
+  document.getElementById('btn-yes')
+      .addEventListener('click', messageContainerDeletion);
 }

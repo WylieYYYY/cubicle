@@ -1,41 +1,50 @@
 'use strict';
 
-import {message_container_selection} from '../popup.js';
+import {CONTEXT_MAP} from './context-map.js';
+import {messageContainerSelection} from '../popup.js';
 
-{% for name in view_names %}
-    import context{{loop.index}} from './{{name}}.js';
-{% endfor %}
-
-const CONTEXT_MAP = new Map([
-    {% for name in view_names %}
-        ['{{name}}', context{{loop.index}}],
-    {% endfor %}
-]);
-
+// update screen is the same as the new container screen and can be reused
 CONTEXT_MAP.set('update-container', CONTEXT_MAP.get('new-container'));
 
-export const COOKIE_STORE_ID_MARKER_PREFIX = "b64_";
+/**
+ * In-band marker prefix to denote that the following data is a valid
+ * cookie store ID, otherwise it may be interpreted as a control sequence.
+ */
+export const COOKIE_STORE_ID_MARKER_PREFIX = 'b64_';
 
-export default function redirect(viewEnum) {
-    const mainElement = document.getElementsByTagName('main')[0];
-    mainElement.replaceChildren();
-    return browser.runtime.sendMessage({
-        message_type: 'request_page', view: viewEnum
-    }).then((html) => {
-        mainElement.innerHTML = html;
-        CONTEXT_MAP.get(viewEnum.view.replaceAll('_', '-'))(viewEnum);
-    });
+/**
+ * Updates the popup with the specified composed view.
+ * This may be merged with [stateUpdateRedirect] in the future.
+ * @param {object} viewEnum - View specification.
+ * @return {Promise} Promise that fulfils once the view is rendered.
+ */
+export default async function redirect(viewEnum) {
+  const mainElement = document.getElementsByTagName('main')[0];
+  mainElement.replaceChildren();
+  return browser.runtime.sendMessage({
+    message_type: 'request_page', view: viewEnum,
+  }).then((html) => {
+    mainElement.innerHTML = html;
+    CONTEXT_MAP.get(viewEnum.view.replaceAll('_', '-'))(viewEnum);
+  });
 }
 
-export function state_update_redirect(messageType, messageEnum) {
-    const mainElement = document.getElementsByTagName('main')[0];
-    mainElement.replaceChildren();
-    const selectContainer = document.getElementById('select-container');
-    selectContainer.disabled = true;
-    const message = {message_type: messageType, action: messageEnum};
-    return browser.runtime.sendMessage(message).then((html) => {
-        selectContainer.innerHTML = html;
-        selectContainer.disabled = false;
-        message_container_selection(selectContainer.value);
-    });
+/**
+ * Sends a message to the background, and updates elements in the popup.
+ * @param {string} messageType - Action type for determining
+ *     elements to update.
+ * @param {object} messageEnum - The actual message.
+ * @return {Promise} Promise that fulfils once the update is fully complete.
+ */
+export async function stateUpdateRedirect(messageType, messageEnum) {
+  const mainElement = document.getElementsByTagName('main')[0];
+  mainElement.replaceChildren();
+  const selectContainer = document.getElementById('select-container');
+  selectContainer.disabled = true;
+  const message = {message_type: messageType, action: messageEnum};
+  return browser.runtime.sendMessage(message).then((html) => {
+    selectContainer.innerHTML = html;
+    selectContainer.disabled = false;
+    messageContainerSelection(selectContainer.value);
+  });
 }
