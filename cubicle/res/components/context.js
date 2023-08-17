@@ -1,5 +1,7 @@
 'use strict';
 
+import {message_container_selection} from '../popup.js';
+
 {% for name in view_names %}
     import context{{loop.index}} from './{{name}}.js';
 {% endfor %}
@@ -31,8 +33,9 @@ export function state_update_redirect(messageType, messageEnum) {
     const selectContainer = document.getElementById('select-container');
     selectContainer.disabled = true;
     const message = {message_type: messageType, action: messageEnum};
-    browser.runtime.sendMessage(message).then((html) => {
+    return browser.runtime.sendMessage(message).then((html) => {
         selectContainer.innerHTML = html;
         selectContainer.disabled = false;
+        message_container_selection(selectContainer.value);
     });
 }

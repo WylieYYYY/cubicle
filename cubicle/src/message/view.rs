@@ -7,11 +7,12 @@ use strum::IntoEnumIterator;
 use strum_macros::Display;
 use tera::{Context, Tera};
 
-use crate::container::Container;
+use crate::container::{Container, ContainerVariant};
 use crate::context::GlobalContext;
 use crate::interop::{self, tabs};
 use crate::interop::contextual_identities::{
-    CookieStoreId, IdentityIcon, IdentityColor, IdentityDetailsProvider
+    CookieStoreId, IdentityColor, IdentityDetails,
+    IdentityIcon, IdentityDetailsProvider
 };
 use crate::util::errors::CustomError;
 
@@ -94,14 +95,23 @@ fn new_container(existing_container: Option<&Container>)
 /// View for existing container list with additional action entries.
 /// Returns a string of HTML fragment, which is an `option` element.
 /// Fails if the browser indicates so.
-/// May be changed to fetching from the context once importing is implemented.
+/// May be changed to have a better name truncation scheme.
 async fn fetch_all_containers(
     global_context: &mut impl DerefMut<Target = GlobalContext>,
     selected: &CookieStoreId
 ) -> Result<String, CustomError> {
     let mut context = Context::new();
+
     context.insert("containers",
-        &global_context.fetch_all_containers().await?);
+        &global_context.containers.iter().filter_map(|container| {
+            use ContainerVariant::*;
+            match container.variant {
+                Permanent => Some(((**container.handle()).clone(),
+                    container.identity_details())),
+                Temporary => None
+            }
+        }).collect::<Vec<(CookieStoreId, IdentityDetails)>>());
+
     context.insert("selected", selected);
     Ok(Tera::default().render_str(r#"
         <option value="none">No Container</option>

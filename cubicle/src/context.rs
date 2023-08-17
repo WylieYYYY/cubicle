@@ -5,9 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::container::{Container, ContainerOwner};
 use crate::preferences::Preferences;
 use crate::domain::psl::Psl;
-use crate::interop::contextual_identities::{
-    ContextualIdentity, CookieStoreId, IdentityDetails, IdentityDetailsProvider
-};
+use crate::interop::contextual_identities::ContextualIdentity;
 use crate::interop::storage;
 use crate::util::errors::CustomError;
 
@@ -44,14 +42,11 @@ impl GlobalContext {
     /// Temporary function before importing is implemented,
     /// may be removed in the future.
     /// Fails if the browser indicates so.
-    pub async fn fetch_all_containers(&mut self)
-    -> Result<Vec<(CookieStoreId, IdentityDetails)>, CustomError> {
+    pub async fn fetch_all_containers(&mut self) -> Result<(), CustomError> {
         self.containers = ContainerOwner::from_iter(
             ContextualIdentity::fetch_all()
             .await?.into_iter().map(Container::from));
-        Ok(self.containers.iter().map(|container| {
-            ((**container.handle()).clone(), container.identity_details())
-        }).collect())
+        Ok(())
     }
 }
 

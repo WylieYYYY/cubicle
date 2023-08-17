@@ -37,7 +37,7 @@ async fn main() -> Result<(), JsError> {
         if global_context.psl.len() == 0 {
             Message::PslUpdate { url: None }.act(&mut global_context).await?;
         }
-        drop(global_context.fetch_all_containers().await);
+        global_context.fetch_all_containers().await?;
         Ok(())
     }.map_err(|error: CustomError| JsError::new(&error.to_string()))
 }
