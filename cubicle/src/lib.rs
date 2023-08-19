@@ -34,7 +34,7 @@ async fn main() -> Result<(), JsError> {
     {
         let mut global_context = GLOBAL_CONTEXT.lock().await;
         *global_context = GlobalContext::from_storage().await?;
-        if global_context.psl.len() == 0 {
+        if global_context.psl.is_empty() {
             Message::PslUpdate { url: None }
                 .act(&mut global_context)
                 .await?;
@@ -66,7 +66,7 @@ pub async fn on_message(message: JsValue) -> Result<JsString, JsError> {
     message
         .act(&mut GLOBAL_CONTEXT.lock().await)
         .await
-        .map(|html| JsString::from(html))
+        .map(JsString::from)
         .map_err(|error| JsError::new(&error.to_string()))
 }
 

@@ -9,6 +9,7 @@ lint:
   script:
     - npm install eslint eslint-config-google
     - cargo fmt --check
+    - cargo clippy -- --deny warnings
     - node node_modules/eslint/bin/eslint.js 'cubicle/res/*.js' 'cubicle/res/components/*.js'
 
 build:

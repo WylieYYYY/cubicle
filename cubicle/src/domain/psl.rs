@@ -66,6 +66,11 @@ impl Psl {
         })
     }
 
+    /// Returns `true` if the list contains no suffix.
+    pub fn is_empty(&self) -> bool {
+        self.set.is_empty()
+    }
+
     /// The number of suffixes stored.
     pub fn len(&self) -> usize {
         self.set.len()

@@ -111,7 +111,7 @@ impl IdentityIcon {
     pub fn url(&self) -> String {
         let mut context = Context::new();
         context.insert("name", &self.to_string());
-        Tera::one_off(&ICON_URL_TEMPLATE, &context, false)
+        Tera::one_off(ICON_URL_TEMPLATE, &context, false)
             .expect("controlled enum template rendering")
     }
 }

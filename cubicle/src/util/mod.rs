@@ -97,6 +97,13 @@ impl Visitor<'_> for SingleStringVisitor {
         formatter.write_str("a string")
     }
 
+    fn visit_str<E>(self, string: &str) -> Result<Self::Value, E>
+    where
+        E: serde::de::Error,
+    {
+        Ok(String::from(string))
+    }
+
     fn visit_string<E>(self, string: String) -> Result<Self::Value, E>
     where
         E: serde::de::Error,

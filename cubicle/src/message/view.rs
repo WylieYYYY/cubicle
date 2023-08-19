@@ -185,11 +185,8 @@ fn options_body(global_context: &mut impl DerefMut<Target = GlobalContext>) -> C
 async fn render_with(context: Context, view: &View) -> String {
     Tera::default()
         .render_str(
-            &interop::fetch_extension_file(&format!(
-                "components/{filename}.html",
-                filename = view.to_string()
-            ))
-            .await,
+            &interop::fetch_extension_file(&format!("components/{filename}.html", filename = view))
+                .await,
             &context,
         )
         .expect("controlled enum template rendering")

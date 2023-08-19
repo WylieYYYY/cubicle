@@ -91,9 +91,7 @@ pub fn cast_or_standard_mismatch<T>(target: JsValue) -> Result<T, CustomError>
 where
     T: for<'de> Deserialize<'de>,
 {
-    Ok(
-        serde_wasm_bindgen::from_value(target).or(Err(CustomError::StandardMismatch {
-            message: format!("`{}` expected", any::type_name::<T>()),
-        }))?,
-    )
+    serde_wasm_bindgen::from_value(target).or(Err(CustomError::StandardMismatch {
+        message: format!("`{}` expected", any::type_name::<T>()),
+    }))
 }

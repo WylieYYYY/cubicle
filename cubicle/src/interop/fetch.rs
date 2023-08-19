@@ -58,11 +58,14 @@ impl Fetch {
     /// Fails if the URL contains credentials, if a network error occurs,
     /// or if the response does not contain a body.
     pub async fn get_stream(url: &str) -> Result<Self, CustomError> {
-        Self::try_from(Response::from(get(url).await?).body().ok_or(
-            CustomError::FailedFetchRequest {
-                message: String::from("response has no body"),
-            },
-        )?)
+        Self::try_from(
+            get(url)
+                .await?
+                .body()
+                .ok_or(CustomError::FailedFetchRequest {
+                    message: String::from("response has no body"),
+                })?,
+        )
     }
 
     /// Sets state and returns with [Poll::Ready] if there is available data.
@@ -113,7 +116,7 @@ impl Fetch {
             if resolve {
                 let done = interop::get_or_standard_mismatch(&value, "done")
                     .and_then(interop::cast_or_standard_mismatch)
-                    .and_then(|done| Ok(if done { Done } else { Delivered }))
+                    .map(|done| if done { Done } else { Delivered })
                     .or(Err(io::Error::new(
                         ErrorKind::InvalidData,
                         "browser's did not return a valid done value",

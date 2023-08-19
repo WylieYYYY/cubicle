@@ -7,7 +7,7 @@ use tera::{Context, Tera};
 fn main() {
     let build_dir = Path::new("../build/");
     let resource_dir = Path::new("res/");
-    let context_file = Path::new("components/context.js");
+    let context_file = Path::new("components/context-map.js");
 
     if !build_dir.exists() {
         fs::create_dir(build_dir).unwrap();

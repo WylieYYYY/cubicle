@@ -50,8 +50,10 @@ impl ContainerAssignStrategy {
             return Ok(Arc::clone(container_match.container.handle()));
         }
 
-        let mut details = IdentityDetails::default();
-        details.name = String::from("Temporary Container ");
+        let mut details = IdentityDetails {
+            name: String::from("Temporary Container "),
+            ..Default::default()
+        };
         let mut suffixes = BTreeSet::default();
         if *self == ContainerAssignStrategy::SuffixedTemporary {
             let domain = global_context

@@ -122,12 +122,7 @@ impl TryFrom<&str> for Suffix {
             .skip(SuffixType::INDEX_AFTER_NORMAL)
         {
             if let Some(domain) = value.strip_prefix(suffix_type.prefix()) {
-                return if domain.is_empty()
-                    || domain
-                        .split('.')
-                        .find(|&segment| segment.is_empty())
-                        .is_some()
-                {
+                return if domain.is_empty() || domain.split('.').any(|segment| segment.is_empty()) {
                     Err(CustomError::InvalidSuffix {
                         suffix: String::from(domain),
                     })
