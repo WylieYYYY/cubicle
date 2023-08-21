@@ -113,11 +113,12 @@ pub async fn on_tab_removed(tab_id: isize) {
     let cookie_store_id = (*tab_det.container_handle).clone();
     drop(tab_det);
     let mut global_context = GLOBAL_CONTEXT.lock().await;
-    let Some(container) = global_context.containers
-        .get_mut(&cookie_store_id) else { return; };
+    let Some(mut container) = global_context.containers
+        .get_mut(cookie_store_id.clone()) else { return; };
 
     if container.variant == ContainerVariant::Temporary {
         let deleted = container.delete_if_empty().await.unwrap_or(false);
+        drop(container);
         if deleted {
             global_context.containers.remove(&cookie_store_id);
         }

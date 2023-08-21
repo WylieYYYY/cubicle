@@ -1,11 +1,12 @@
 //! Additional functionalities for the builtin [ContextualIdentity].
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 
-use crate::domain::suffix::{self, Suffix};
+use crate::domain::suffix::{self, MatchMode, Suffix};
 use crate::domain::EncodedDomain;
 use crate::interop::contextual_identities::{
     ContextualIdentity, CookieStoreId, IdentityDetails, IdentityDetailsProvider,
@@ -39,17 +40,26 @@ impl ContainerOwner {
         self.id_container_map.get(cookie_store_id)
     }
 
-    /// Gets an owned container mutably,
+    /// Gets an owned container mutably, wrapped with an [OwnerHandle].
     /// [None] if the container specified does not exist.
-    pub fn get_mut(&mut self, cookie_store_id: &CookieStoreId) -> Option<&mut Container> {
-        self.id_container_map.get_mut(cookie_store_id)
+    pub fn get_mut(&mut self, cookie_store_id: CookieStoreId) -> Option<OwnerHandle> {
+        if self.id_container_map.get_mut(&cookie_store_id).is_some() {
+            Some(OwnerHandle {
+                owner: self,
+                cookie_store_id,
+            })
+        } else {
+            None
+        }
     }
 
-    /// Remove an owned container, this does not remove the suffix mappings.
-    /// The suffixes may be cleaned up later.
+    /// Remove an owned container.
     /// Returns the popped container, or [None] if not found.
     pub fn remove(&mut self, cookie_store_id: &CookieStoreId) -> Option<Container> {
-        self.id_container_map.remove(cookie_store_id)
+        let container = self.id_container_map.remove(cookie_store_id);
+        self.suffix_id_map
+            .retain(|_suffix, id| *id == *cookie_store_id);
+        container
     }
 
     /// Matches a container to the given domain by the stored suffixes,
@@ -58,7 +68,7 @@ impl ContainerOwner {
     /// Glob suffix may not match if the container with the corresponding
     /// normal suffix is removed, this may be fixed in the future.
     pub fn match_container(&mut self, domain: EncodedDomain) -> Option<ContainerMatch> {
-        let matches = suffix::match_suffix(&self.suffix_id_map, domain);
+        let matches = suffix::match_suffix(&self.suffix_id_map, domain, MatchMode::Full);
         for (matched_domain, suffix) in matches {
             let cookie_store_id = self.suffix_id_map.get(&suffix).expect("suffix matched");
             if let Some(container) = self.id_container_map.remove(cookie_store_id) {
@@ -92,6 +102,46 @@ impl FromIterator<Container> for ContainerOwner {
             instance.insert(container);
         }
         instance
+    }
+}
+
+/// Handle of a [Container] that is owned by a [ContainerOwner].
+/// Dereferences into a container.
+/// When dropped, the owner's suffix lookup table is updated.
+pub struct OwnerHandle<'a> {
+    owner: &'a mut ContainerOwner,
+    cookie_store_id: CookieStoreId,
+}
+
+impl Deref for OwnerHandle<'_> {
+    type Target = Container;
+
+    fn deref(&self) -> &Self::Target {
+        self.owner
+            .id_container_map
+            .get(&self.cookie_store_id)
+            .expect("held mutable reference to owner")
+    }
+}
+
+impl DerefMut for OwnerHandle<'_> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.owner
+            .id_container_map
+            .get_mut(&self.cookie_store_id)
+            .expect("held mutable reference to owner")
+    }
+}
+
+impl Drop for OwnerHandle<'_> {
+    fn drop(&mut self) {
+        self.owner
+            .suffix_id_map
+            .retain(|_suffix, cookie_store_id| *cookie_store_id != self.cookie_store_id);
+        let suffixes = self.suffixes.clone().into_iter();
+        self.owner
+            .suffix_id_map
+            .extend(suffixes.map(|suffix| (suffix, self.cookie_store_id.clone())));
     }
 }
 

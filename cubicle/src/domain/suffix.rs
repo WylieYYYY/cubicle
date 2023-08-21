@@ -11,12 +11,24 @@ use strum_macros::EnumIter;
 use super::EncodedDomain;
 use crate::util::{errors::CustomError, KeyRangeExt};
 
+/// Modes for matching suffixes from different sources,
+/// as they have different expectations on the procedure.
+/// - [Full](MatchMode::Full) means that the suffix should match the entirety
+///   of the domain, useful for [Container](crate::container::Container).
+/// - [Parent](MatchMode::Parent) means that the suffix should match the parent
+///   of the domain, useful for [Psl](super::psl::Psl).
+pub enum MatchMode {
+    Full,
+    Parent,
+}
+
 /// Looks through a binary tree based data structure of suffixes
 /// to search for ones that match the domain or its ancestors.
 /// Returns an iterator of tuples of the matched domains and suffixes.
 pub fn match_suffix<'a, T>(
     set: &'a T,
     domain: EncodedDomain,
+    mode: MatchMode,
 ) -> impl Iterator<Item = (EncodedDomain, Suffix)> + 'a
 where
     T: KeyRangeExt<'a, Suffix> + 'a,
@@ -27,8 +39,12 @@ where
         mem::replace(&mut domain, parent)
     })
     .map_while(convert::identity);
-    domain_iter.filter_map(|domain| {
-        match_suffix_exact(set, &domain.parent()?).map(|suffix| (domain, suffix))
+    domain_iter.filter_map(move |domain| {
+        let domain_or_parent = match mode {
+            MatchMode::Full => domain.clone(),
+            MatchMode::Parent => domain.parent()?,
+        };
+        match_suffix_exact(set, &domain_or_parent).map(|suffix| (domain, suffix))
     })
 }
 
@@ -186,5 +202,105 @@ impl SuffixType {
             SuffixType::Exclusion => "!",
             SuffixType::Normal => "",
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use std::{collections::BTreeSet, fmt::Debug};
+
+    use super::*;
+
+    fn from<T, U>(value: U) -> T
+    where
+        T: TryFrom<U>,
+        <T as TryFrom<U>>::Error: Debug,
+    {
+        T::try_from(value).expect("controlled test")
+    }
+
+    fn test_suffixes() -> [Suffix; 8] {
+        [
+            "*.com",
+            "!example.com",
+            // should not coexist with the exclusion rule,
+            // but hypothetically should be ordered like this
+            "example.com",
+            "*.example.com",
+            "!more.example.com",
+            "*.net",
+            "測試.net",
+            "xn--w22ay72a.net",
+        ]
+        .map(from::<Suffix, _>)
+    }
+
+    #[test]
+    fn test_match_suffix() {
+        let suffix_set = BTreeSet::from(test_suffixes());
+        let table = [
+            ("example.com", vec!["example.com"]),
+            ("more.example.com", vec!["!more.example.com", "example.com"]),
+            ("example.net", vec!["*.net"]),
+            ("com", vec![]),
+        ];
+        for entry in table {
+            assert!(match_suffix(
+                &suffix_set,
+                from::<EncodedDomain, _>(entry.0),
+                MatchMode::Full
+            )
+            .map(|suffix_match| suffix_match.1.raw())
+            .eq(entry.1.clone()));
+            let mut skipped_matches = entry.1.into_iter();
+            skipped_matches.next();
+            assert!(match_suffix(
+                &suffix_set,
+                from::<EncodedDomain, _>(entry.0),
+                MatchMode::Parent
+            )
+            .map(|suffix_match| suffix_match.1.raw())
+            .eq(skipped_matches));
+        }
+    }
+
+    #[test]
+    fn test_suffix_match_ordering() {
+        let table = [
+            (("*.com", "exmaple.com"), true),
+            (("com", "exmaple.com"), false),
+            (("!com", "example.com"), false),
+            (("!example.com", "example.com"), true),
+            (("*.example.com", "example.com"), false),
+        ];
+        for entry in table {
+            assert!(
+                from::<Suffix, _>((entry.0).0)
+                    .match_ordering(&from::<EncodedDomain, _>((entry.0).1))
+                    .is_eq()
+                    == entry.1
+            );
+        }
+    }
+
+    #[test]
+    fn test_suffix_try_from() {
+        assert!(Suffix::try_from("*.com").is_ok());
+        assert!(Suffix::try_from("*com").is_err());
+        assert!(Suffix::try_from("com*").is_err());
+        assert!(Suffix::try_from("!com").is_ok());
+        assert!(Suffix::try_from("com!").is_err());
+        assert!(Suffix::try_from("!.com").is_err());
+        assert!(Suffix::try_from("a.com").is_ok());
+        assert!(Suffix::try_from("a..com").is_err());
+        assert!(Suffix::try_from(".com").is_err());
+        assert!(Suffix::try_from("com.").is_err());
+    }
+
+    #[test]
+    fn suffix_sorting() {
+        test_suffixes()
+            .windows(2)
+            .all(|window| window[0] <= window[1]);
     }
 }

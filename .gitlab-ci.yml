@@ -2,6 +2,7 @@ image: registry.gitlab.com/wylieyyyy/cubicle:latest
 
 stages:
   - lint
+  - test
   - build
 
 lint:
@@ -11,6 +12,11 @@ lint:
     - cargo fmt --check
     - cargo clippy -- --deny warnings
     - node node_modules/eslint/bin/eslint.js 'cubicle/res/*.js' 'cubicle/res/components/*.js'
+
+test:
+  stage: test
+  script:
+    - cargo test --lib
 
 build:
   stage: build

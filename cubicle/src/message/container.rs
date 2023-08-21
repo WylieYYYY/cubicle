@@ -45,9 +45,9 @@ impl ContainerAction {
             } => {
                 let cookie_store_id = match cookie_store_id {
                     Some(cookie_store_id) => {
-                        let container = global_context
+                        let mut container = global_context
                             .containers
-                            .get_mut(&cookie_store_id)
+                            .get_mut(cookie_store_id.clone())
                             .expect("valid ID passed from message");
                         container.update(details).await?;
                         (**container.handle()).clone()
@@ -82,9 +82,9 @@ impl ContainerAction {
                 } else {
                     Some(Suffix::try_from(&*new_suffix)?)
                 };
-                let container = global_context
+                let mut container = global_context
                     .containers
-                    .get_mut(&cookie_store_id)
+                    .get_mut(cookie_store_id.clone())
                     .expect("valid ID passed from message");
                 if let Some(suffix) = old_suffix {
                     container.suffixes.remove(&suffix);
@@ -98,9 +98,10 @@ impl ContainerAction {
             DeleteContainer { cookie_store_id } => {
                 let container = global_context
                     .containers
-                    .get_mut(&cookie_store_id)
+                    .get_mut(cookie_store_id.clone())
                     .expect("valid ID passed from message");
                 container.delete().await?;
+                drop(container);
                 global_context.containers.remove(&cookie_store_id);
                 Ok(cookie_store_id)
             }

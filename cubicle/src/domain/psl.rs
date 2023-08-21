@@ -8,7 +8,7 @@ use async_std::io::prelude::*;
 use chrono::naive::NaiveDate;
 use serde::{Deserialize, Serialize};
 
-use super::suffix::{self, Suffix, SuffixType};
+use super::suffix::{self, MatchMode, Suffix, SuffixType};
 use super::EncodedDomain;
 use crate::util::errors::CustomError;
 
@@ -56,7 +56,7 @@ impl Psl {
     /// [None] if the list does not specify the condition for the domain.
     /// Domains that share the same can share cookies safely.
     pub fn match_suffix(&self, domain: EncodedDomain) -> Option<EncodedDomain> {
-        suffix::match_suffix(&self.set, domain).find_map(|(domain, suffix)| {
+        suffix::match_suffix(&self.set, domain, MatchMode::Parent).find_map(|(domain, suffix)| {
             let is_exclusion = *suffix.suffix_type() == SuffixType::Exclusion;
             if is_exclusion {
                 None
