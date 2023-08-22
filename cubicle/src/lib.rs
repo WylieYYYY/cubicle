@@ -21,6 +21,7 @@ use wasm_bindgen::prelude::*;
 use crate::container::ContainerVariant;
 use crate::context::GlobalContext;
 use crate::domain::EncodedDomain;
+use crate::interop::contextual_identities::CookieStoreId;
 use crate::interop::tabs::{TabId, TabProperties};
 use crate::message::Message;
 use crate::tab::TabDeterminant;
@@ -39,8 +40,7 @@ async fn main() -> Result<(), JsError> {
                 .act(&mut global_context)
                 .await?;
         }
-        global_context.fetch_all_containers().await?;
-        Ok(())
+        global_context.fetch_all_containers().await
     }
     .map_err(|error: CustomError| JsError::new(&error.to_string()))
 }
@@ -79,17 +79,29 @@ pub async fn on_tab_updated(tab_id: isize, tab_properties: JsValue) -> Result<()
         let tab_id = TabId::new(tab_id);
         let tab_properties = interop::cast_or_standard_mismatch::<TabProperties>(tab_properties)?;
 
-        let Some(new_domain) = tab_new_domain(tab_id.clone(),
+        let Some((new_domain, cookie_store_id, opener_is_managed)) = tab_new_domain(tab_id.clone(),
             &tab_properties).await else { return Ok(()); };
         tab_id.stop_loading().await;
 
         let mut global_context = GLOBAL_CONTEXT.lock().await;
-        let container_handle = global_context
-            .preferences
-            .assign_strategy
-            .clone()
-            .match_container(&mut global_context, new_domain.clone())
-            .await?;
+        let assign_strategy = global_context.preferences.assign_strategy.clone();
+        let container_handle = if opener_is_managed {
+            global_context
+                .preferences
+                .eject_strategy
+                .clone()
+                .match_container(
+                    &mut global_context,
+                    new_domain.clone(),
+                    &cookie_store_id,
+                    assign_strategy,
+                )
+                .await?
+        } else {
+            assign_strategy
+                .match_container(&mut global_context, new_domain.clone())
+                .await?
+        };
         drop(global_context);
 
         let tab_det = TabDeterminant {
@@ -126,13 +138,22 @@ pub async fn on_tab_removed(tab_id: isize) {
 }
 
 /// Checks [MANAGED_TABS] quickly to see if the tab requires switching.
-/// Returns the new domain if the tab are to be switched, [None] otherwise.
-async fn tab_new_domain(tab_id: TabId, tab_properties: &TabProperties) -> Option<EncodedDomain> {
+/// If the tab is to be switched, returns a tuple of the new domain,
+/// current [CookieStoreId], and a boolean value indicating
+/// if the opener tab was managed, [None] otherwise.
+async fn tab_new_domain(
+    tab_id: TabId,
+    tab_properties: &TabProperties,
+) -> Option<(EncodedDomain, CookieStoreId, bool)> {
     let new_domain = tab_properties.domain().ok()??;
     let mut managed_tabs = MANAGED_TABS.lock().await;
     let mut same_domain = false;
 
-    managed_tabs
+    let opener_domain = tab_properties
+        .opener_tab_id()
+        .and_then(|tab_id| managed_tabs.get(tab_id))
+        .map(|tab_det| tab_det.domain.clone());
+    let cookie_store_id = (*managed_tabs
         .entry(tab_id)
         .and_modify(|old_det| {
             if old_det.domain == new_domain {
@@ -144,12 +165,14 @@ async fn tab_new_domain(tab_id: TabId, tab_properties: &TabProperties) -> Option
         .or_insert(TabDeterminant {
             container_handle: Arc::new(tab_properties.cookie_store_id.clone()),
             domain: new_domain.clone(),
-        });
+        })
+        .container_handle)
+        .clone();
 
-    if same_domain {
+    if same_domain || opener_domain.as_ref() == Some(&new_domain) {
         None
     } else {
-        Some(new_domain)
+        Some((new_domain, cookie_store_id, opener_domain.is_some()))
     }
 }
 

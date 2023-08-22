@@ -62,6 +62,11 @@ impl TabProperties {
         interop::url_to_domain(url).map(Some)
     }
 
+    /// See <https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/tabs/Tab>.
+    pub fn opener_tab_id(&self) -> Option<&TabId> {
+        self.opener_tab_id.as_ref()
+    }
+
     /// Create a new tab using this instance,
     /// whether the resulting tab completely matches is unchecked.
     /// Fails if the browser indicates so.
