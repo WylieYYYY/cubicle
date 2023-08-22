@@ -9,7 +9,7 @@ use std::cmp::Ordering;
 use serde::{Deserialize, Serialize};
 
 /// Domain that can be encoded as an international domain name.
-#[derive(Clone, Deserialize, Eq, Serialize)]
+#[derive(Clone, Debug, Deserialize, Eq, Serialize)]
 pub struct EncodedDomain {
     encoded: String,
     raw: String,
@@ -94,5 +94,69 @@ impl Ord for EncodedDomain {
     fn cmp(&self, other: &Self) -> Ordering {
         self.partial_cmp(other)
             .expect("controlled PartialOrd implementation")
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use std::assert_eq;
+
+    use super::*;
+    use crate::util::test::TestFrom;
+
+    #[test]
+    fn test_domain_tld() {
+        assert_eq!(EncodedDomain::tfrom("example.com").tld().raw(), "com");
+        assert_eq!(EncodedDomain::tfrom("com").tld().raw(), "com");
+    }
+
+    #[test]
+    fn test_domain_parent() {
+        assert_eq!(
+            EncodedDomain::tfrom("example.com").parent(),
+            Some(EncodedDomain::tfrom("com"))
+        );
+        assert_eq!(EncodedDomain::tfrom("com").parent(), None);
+    }
+
+    #[test]
+    fn test_domain_try_from() {
+        assert!(EncodedDomain::try_from("a.com").is_ok());
+        assert!(EncodedDomain::try_from("測試.net").is_ok());
+        assert!(EncodedDomain::try_from("a..com").is_err());
+        assert!(EncodedDomain::try_from(".com").is_err());
+        assert!(EncodedDomain::try_from("com.").is_err());
+    }
+
+    #[test]
+    fn test_domain_reverse() {
+        assert!(EncodedDomain::tfrom("sub.example.com")
+            .reverse()
+            .eq(["com", "example", "sub"]));
+    }
+
+    #[test]
+    fn test_domain_eq() {
+        assert_eq!(
+            EncodedDomain::tfrom("example.net"),
+            EncodedDomain::tfrom("example.net")
+        );
+        assert_eq!(
+            EncodedDomain::tfrom("試驗.net"),
+            EncodedDomain::tfrom("xn--w22ay72a.net")
+        );
+    }
+
+    #[test]
+    fn test_domain_order() {
+        let table = [
+            "example.com",
+            "sub.example.com",
+            "example.net",
+            "測試.net",
+            "xn--w22ay72a.net",
+        ]
+        .map(EncodedDomain::tfrom);
+        assert!(table.windows(2).all(|window| window[0] <= window[1]));
     }
 }

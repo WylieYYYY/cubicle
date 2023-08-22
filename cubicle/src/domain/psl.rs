@@ -82,3 +82,55 @@ impl Psl {
         self.last_updated
     }
 }
+
+#[cfg(test)]
+mod test {
+    use std::assert_eq;
+
+    use async_std::io::Cursor;
+    use chrono::Utc;
+    use indoc::indoc;
+
+    use super::*;
+    use crate::util::test::TestFrom;
+
+    #[async_std::test]
+    async fn test_psl_from_stream() {
+        let mut builtin_bytes =
+            Cursor::new(std::include_bytes!("../../res/public_suffix_list.dat"));
+        let builtin_psl = Psl::from_stream(&mut builtin_bytes, Utc::now().date_naive())
+            .await
+            .expect("from_stream should read the builtin PSL with no error");
+        assert_eq!(builtin_psl.len(), 9021);
+    }
+
+    #[async_std::test]
+    async fn test_psl_match_suffix() {
+        let mut bytes = Cursor::new(
+            indoc! {"
+            com
+            *.com
+            !example.com
+        "}
+            .as_bytes(),
+        );
+        let psl = Psl::from_stream(&mut bytes, Utc::now().date_naive())
+            .await
+            .expect("controlled test");
+        let table = [
+            ("example.org", None),
+            ("example.com", Some("example.com")),
+            ("sub.example.com", Some("example.com")),
+            ("testing.com", Some("testing.com")),
+            ("sub.testing.com", Some("sub.testing.com")),
+            ("com", None),
+        ];
+        for entry in table {
+            let got = psl.match_suffix(EncodedDomain::tfrom(entry.0));
+            assert_eq!(
+                got.map(|got| String::from(got.raw())),
+                entry.1.map(String::from)
+            );
+        }
+    }
+}

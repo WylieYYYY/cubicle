@@ -207,17 +207,10 @@ impl SuffixType {
 
 #[cfg(test)]
 mod test {
-    use std::{collections::BTreeSet, fmt::Debug};
+    use std::collections::BTreeSet;
 
     use super::*;
-
-    fn from<T, U>(value: U) -> T
-    where
-        T: TryFrom<U>,
-        <T as TryFrom<U>>::Error: Debug,
-    {
-        T::try_from(value).expect("controlled test")
-    }
+    use crate::util::test::TestFrom;
 
     fn test_suffixes() -> [Suffix; 8] {
         [
@@ -232,7 +225,7 @@ mod test {
             "測試.net",
             "xn--w22ay72a.net",
         ]
-        .map(from::<Suffix, _>)
+        .map(Suffix::tfrom)
     }
 
     #[test]
@@ -245,18 +238,16 @@ mod test {
             ("com", vec![]),
         ];
         for entry in table {
-            assert!(match_suffix(
-                &suffix_set,
-                from::<EncodedDomain, _>(entry.0),
-                MatchMode::Full
-            )
-            .map(|suffix_match| suffix_match.1.raw())
-            .eq(entry.1.clone()));
+            assert!(
+                match_suffix(&suffix_set, EncodedDomain::tfrom(entry.0), MatchMode::Full)
+                    .map(|suffix_match| suffix_match.1.raw())
+                    .eq(entry.1.clone())
+            );
             let mut skipped_matches = entry.1.into_iter();
             skipped_matches.next();
             assert!(match_suffix(
                 &suffix_set,
-                from::<EncodedDomain, _>(entry.0),
+                EncodedDomain::tfrom(entry.0),
                 MatchMode::Parent
             )
             .map(|suffix_match| suffix_match.1.raw())
@@ -275,8 +266,8 @@ mod test {
         ];
         for entry in table {
             assert!(
-                from::<Suffix, _>((entry.0).0)
-                    .match_ordering(&from::<EncodedDomain, _>((entry.0).1))
+                Suffix::tfrom((entry.0).0)
+                    .match_ordering(&EncodedDomain::tfrom((entry.0).1))
                     .is_eq()
                     == entry.1
             );
@@ -299,8 +290,8 @@ mod test {
 
     #[test]
     fn suffix_sorting() {
-        test_suffixes()
+        assert!(test_suffixes()
             .windows(2)
-            .all(|window| window[0] <= window[1]);
+            .all(|window| window[0] <= window[1]));
     }
 }

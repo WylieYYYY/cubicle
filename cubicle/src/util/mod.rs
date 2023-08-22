@@ -111,3 +111,23 @@ impl Visitor<'_> for SingleStringVisitor {
         Ok(string)
     }
 }
+
+#[cfg(test)]
+pub mod test {
+    use std::fmt::Debug;
+
+    /// [From]-like trait for testing with known inputs.
+    pub trait TestFrom<T> {
+        fn tfrom(value: T) -> Self;
+    }
+
+    impl<T, U, E> TestFrom<T> for U
+    where
+        E: Debug,
+        U: TryFrom<T, Error = E>,
+    {
+        fn tfrom(value: T) -> Self {
+            Self::try_from(value).expect("controlled test")
+        }
+    }
+}
