@@ -72,11 +72,9 @@ impl ContainerAction {
                 old_suffix,
                 new_suffix,
             } => {
-                let old_suffix = if old_suffix.is_empty() {
-                    None
-                } else {
-                    Some(Suffix::try_from(&*old_suffix).expect("valid suffix passed from message"))
-                };
+                let old_suffix = (!old_suffix.is_empty()).then(|| {
+                    Suffix::try_from(&*old_suffix).expect("valid suffix passed from message")
+                });
                 let new_suffix = if new_suffix.is_empty() {
                     None
                 } else {

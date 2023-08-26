@@ -2,10 +2,10 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::container::{Container, ContainerOwner};
+use crate::container::ContainerOwner;
 use crate::domain::psl::Psl;
-use crate::interop::contextual_identities::ContextualIdentity;
 use crate::interop::storage;
+use crate::migrate::{self, Version};
 use crate::preferences::Preferences;
 use crate::util::errors::CustomError;
 
@@ -28,35 +28,13 @@ impl GlobalContext {
         let mut context = GlobalContext::default();
         if stored_version == Version::default() {
             storage::set_with_serde_keys(&context).await?;
-            storage::set_with_serde_keys(&CURRENT_VERSION).await?;
+            storage::set_with_serde_keys(&migrate::CURRENT_VERSION).await?;
             Ok(context)
-        } else if stored_version != CURRENT_VERSION {
+        } else if stored_version != migrate::CURRENT_VERSION {
             Err(CustomError::UnsupportedVersion)
         } else {
             storage::get_with_keys(&mut context).await?;
             Ok(context)
         }
     }
-
-    /// Fetches all [ContextualIdentity] and treat them as [Container].
-    /// Temporary function before importing is implemented,
-    /// may be removed in the future.
-    /// Fails if the browser indicates so.
-    pub async fn fetch_all_containers(&mut self) -> Result<(), CustomError> {
-        self.containers = ContainerOwner::from_iter(
-            ContextualIdentity::fetch_all()
-                .await?
-                .into_iter()
-                .map(Container::from),
-        );
-        Ok(())
-    }
 }
-
-/// Versioning of [GlobalContext] for migrating and detecteing older version.
-/// The versioning scheme is to be decided in the next release.
-#[derive(Default, Deserialize, Eq, PartialEq, Serialize)]
-struct Version {
-    pub version: (i16, i16, i16),
-}
-const CURRENT_VERSION: Version = Version { version: (0, 1, 0) };

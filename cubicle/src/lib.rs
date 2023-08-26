@@ -5,6 +5,7 @@ pub mod context;
 pub mod domain;
 pub mod interop;
 pub mod message;
+pub mod migrate;
 pub mod preferences;
 pub mod tab;
 pub mod util;
@@ -24,6 +25,7 @@ use crate::domain::EncodedDomain;
 use crate::interop::contextual_identities::CookieStoreId;
 use crate::interop::tabs::{TabId, TabProperties};
 use crate::message::Message;
+use crate::migrate::import;
 use crate::tab::TabDeterminant;
 use crate::util::errors::CustomError;
 
@@ -40,7 +42,8 @@ async fn main() -> Result<(), JsError> {
                 .act(&mut global_context)
                 .await?;
         }
-        global_context.fetch_all_containers().await
+        global_context.containers = import::fetch_all_containers(true).await?;
+        Ok(())
     }
     .map_err(|error: CustomError| JsError::new(&error.to_string()))
 }
@@ -169,11 +172,11 @@ async fn tab_new_domain(
         .container_handle)
         .clone();
 
-    if same_domain || opener_domain.as_ref() == Some(&new_domain) {
-        None
-    } else {
-        Some((new_domain, cookie_store_id, opener_domain.is_some()))
-    }
+    (!same_domain && opener_domain.as_ref() != Some(&new_domain)).then_some((
+        new_domain,
+        cookie_store_id,
+        opener_domain.is_some(),
+    ))
 }
 
 /// Switchs the tab to a [Container](crate::container::Container)

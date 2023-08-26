@@ -57,12 +57,7 @@ impl Psl {
     /// Domains that share the same can share cookies safely.
     pub fn match_suffix(&self, domain: EncodedDomain) -> Option<EncodedDomain> {
         suffix::match_suffix(&self.set, domain, MatchMode::Parent).find_map(|(domain, suffix)| {
-            let is_exclusion = *suffix.suffix_type() == SuffixType::Exclusion;
-            if is_exclusion {
-                None
-            } else {
-                Some(domain)
-            }
+            (*suffix.suffix_type() != SuffixType::Exclusion).then_some(domain)
         })
     }
 

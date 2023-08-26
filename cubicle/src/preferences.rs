@@ -49,7 +49,8 @@ impl ContainerAssignStrategy {
         if let Some(container_match) = global_context.containers.match_container(domain.clone()) {
             return Ok(Arc::clone(container_match.container.handle()));
         }
-        new_temporary_container(global_context, Some(domain)).await
+        let domain = (*self == ContainerAssignStrategy::SuffixedTemporary).then_some(domain);
+        new_temporary_container(global_context, domain).await
     }
 }
 
@@ -87,12 +88,27 @@ impl ContainerEjectStrategy {
         use ContainerEjectStrategy::*;
         match *self {
             IsolatedTemporary => new_temporary_container(global_context, None).await,
-            RemainInPlace => eject_remain_in_place(global_context, cookie_store_id).await,
+            RemainInPlace => Self::eject_remain_in_place(global_context, cookie_store_id).await,
             Reassignment => {
                 assign_strategy
                     .match_container(global_context, domain)
                     .await
             }
+        }
+    }
+
+    /// Remain in place eject strategy implementation.
+    /// A new isolated temporary container is created
+    /// if the container disappears before the handle is obtained.
+    /// Fails if the browser indicates so.
+    async fn eject_remain_in_place(
+        global_context: &mut GlobalContext,
+        cookie_store_id: &CookieStoreId,
+    ) -> Result<Arc<CookieStoreId>, CustomError> {
+        if let Some(container) = global_context.containers.get(cookie_store_id) {
+            Ok(Arc::clone(container.handle()))
+        } else {
+            new_temporary_container(global_context, None).await
         }
     }
 }
@@ -101,6 +117,7 @@ impl ContainerEjectStrategy {
 /// does not check for an existing temporary container.
 /// If a domain is supplied, its suffix will be appended.
 /// the naming scheme may be changed in the future.
+/// Fails if the browser indicates so.
 async fn new_temporary_container(
     global_context: &mut GlobalContext,
     domain: Option<EncodedDomain>,
@@ -124,18 +141,4 @@ async fn new_temporary_container(
     storage::store_single_entry(&container_handle, &container).await?;
     global_context.containers.insert(container);
     Ok(container_handle)
-}
-
-/// Remain in place eject strategy implementation.
-/// A new isolated temporary container is created
-/// if the container disappears before the handle is obtained.
-async fn eject_remain_in_place(
-    global_context: &mut GlobalContext,
-    cookie_store_id: &CookieStoreId,
-) -> Result<Arc<CookieStoreId>, CustomError> {
-    if let Some(container) = global_context.containers.get(cookie_store_id) {
-        Ok(Arc::clone(container.handle()))
-    } else {
-        new_temporary_container(global_context, None).await
-    }
 }
