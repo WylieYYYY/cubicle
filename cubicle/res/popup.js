@@ -3,6 +3,7 @@
 import {
   default as redirect,
   COOKIE_STORE_ID_MARKER_PREFIX,
+  updateContainerListing,
 } from './components/context.js';
 
 /**
@@ -60,12 +61,5 @@ function messageContainerUpdate() {
         window.close();
       });
   redirect({view: 'welcome'});
-  browser.runtime.sendMessage({
-    message_type: 'request_page', view: {
-      view: 'fetch_all_containers', selected: null,
-    },
-  }).then((html) => {
-    const selectElement = document.getElementById('select-container');
-    selectElement.innerHTML = html;
-  });
+  updateContainerListing();
 })();

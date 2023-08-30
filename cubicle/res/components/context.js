@@ -48,3 +48,18 @@ export async function stateUpdateRedirect(messageType, messageEnum) {
     messageContainerSelection(selectContainer.value);
   });
 }
+
+/**
+ * Updates the container listing in the `select-container` element.
+ * @return {Promise} Promise that fulfils once the listing is updated.
+ */
+export async function updateContainerListing() {
+  return browser.runtime.sendMessage({
+    message_type: 'request_page', view: {
+      view: 'fetch_all_containers', selected: null,
+    },
+  }).then((html) => {
+    const selectElement = document.getElementById('select-container');
+    selectElement.innerHTML = html;
+  });
+}

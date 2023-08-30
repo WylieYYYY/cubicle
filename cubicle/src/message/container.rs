@@ -9,12 +9,18 @@ use crate::container::{Container, ContainerVariant};
 use crate::context::GlobalContext;
 use crate::domain::suffix::Suffix;
 use crate::interop::contextual_identities::{CookieStoreId, IdentityDetails};
+use crate::interop::tabs;
+use crate::migrate::import::MigrateType;
 use crate::util::errors::CustomError;
 
 /// Message type for container operations that are not tab related.
 #[derive(Deserialize)]
 #[serde(rename_all = "snake_case", tag = "action")]
 pub enum ContainerAction {
+    MigrateContainer {
+        migrate_type: MigrateType,
+        detect_temp: bool,
+    },
     SubmitIdentityDetails {
         cookie_store_id: Option<CookieStoreId>,
         details: IdentityDetails,
@@ -39,6 +45,14 @@ impl ContainerAction {
     ) -> Result<CookieStoreId, CustomError> {
         use ContainerAction::*;
         match self {
+            MigrateContainer {
+                migrate_type,
+                detect_temp,
+            } => {
+                global_context.containers = migrate_type.act(detect_temp).await?;
+                tabs::current_tab_cookie_store_id().await
+            }
+
             SubmitIdentityDetails {
                 cookie_store_id,
                 details,

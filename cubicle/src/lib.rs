@@ -25,7 +25,6 @@ use crate::domain::EncodedDomain;
 use crate::interop::contextual_identities::CookieStoreId;
 use crate::interop::tabs::{TabId, TabProperties};
 use crate::message::Message;
-use crate::migrate::import;
 use crate::tab::TabDeterminant;
 use crate::util::errors::CustomError;
 
@@ -42,7 +41,6 @@ async fn main() -> Result<(), JsError> {
                 .act(&mut global_context)
                 .await?;
         }
-        global_context.containers = import::fetch_all_containers(true).await?;
         Ok(())
     }
     .map_err(|error: CustomError| JsError::new(&error.to_string()))

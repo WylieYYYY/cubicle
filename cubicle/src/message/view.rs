@@ -24,6 +24,7 @@ use crate::util::errors::CustomError;
 pub enum View {
     NewContainer,
     Welcome,
+    Import,
     FetchAllContainers { selected: Option<CookieStoreId> },
     DeletePrompt { cookie_store_id: CookieStoreId },
     UpdateContainer { cookie_store_id: CookieStoreId },
@@ -44,7 +45,7 @@ impl View {
         use View::*;
         match self {
             NewContainer => Ok(render_with(new_container(None), self).await),
-            Welcome => Ok(render_with(Context::default(), self).await),
+            Welcome | Import => Ok(render_with(Context::default(), self).await),
             FetchAllContainers { selected } => {
                 let selected = selected
                     .clone()
