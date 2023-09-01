@@ -14,6 +14,8 @@ use self::view::View;
 use crate::context::GlobalContext;
 use crate::domain::psl::Psl;
 use crate::interop::{self, fetch::Fetch, storage};
+use crate::migrate;
+use crate::preferences::Preferences;
 use crate::util::errors::CustomError;
 
 /// Message type for communicating with content and pop-up scripts.
@@ -24,6 +26,7 @@ pub enum Message {
     RequestPage { view: View },
     ContainerAction { action: ContainerAction },
     PslUpdate { url: Option<String> },
+    ApplyPreferences { preferences: Preferences },
 }
 
 impl Message {
@@ -48,12 +51,22 @@ impl Message {
             }
             PslUpdate { url } => {
                 let local_path = interop::prepend_extension_base_url("public_suffix_list.dat");
+                let use_external = url.is_some();
                 let mut reader =
                     BufReader::new(Fetch::get_stream(&url.unwrap_or(local_path)).await?);
-                let new_date = Utc::now().date_naive();
+                let new_date = if use_external {
+                    Utc::now().date_naive()
+                } else {
+                    *migrate::BUILTIN_PSL_VERSION
+                };
                 global_context.psl = Psl::from_stream(&mut reader, new_date).await.unwrap();
                 storage::store_single_entry("psl", &global_context.psl).await?;
                 Ok(new_date.to_string())
+            }
+            ApplyPreferences { preferences } => {
+                global_context.preferences = preferences;
+                storage::store_single_entry("preferences", &global_context.preferences).await?;
+                Ok(String::default())
             }
         }
     }

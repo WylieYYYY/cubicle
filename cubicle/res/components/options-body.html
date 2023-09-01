@@ -11,4 +11,50 @@
     </button>
     <span>Last updated: <span id="lbl-psl-date">{{psl_last_updated}}</span></span>
   </div>
+  <form id="form-preferences" method="dialog">
+    <h2>Container Assignment Rule</h2>
+    <h3>When an uncontained tab is created with no applicable container:</h3>
+    <div>
+      <input id="radio-assign-suffixed-temporary" type="radio"
+          name="assign_strategy" value="suffixed_temporary"
+          {% if assign_strategy == "suffixed_temporary" %}checked=""{% endif %}/>
+      <label for="radio-assign-suffixed-temporary">
+        Create a temporary container for the domain
+      </label>
+    </div>
+    <div>
+      <input id="radio-assign-isolated-temporary" type="radio"
+          name="assign_strategy" value="isolated_temporary"
+          {% if assign_strategy == "isolated_temporary" %}checked=""{% endif %}/>
+      <label for="radio-assign-isolated-temporary">
+        Create a temporary container for that specific tab
+      </label>
+    </div>
+    <h3>When a tab is rejected from an existing container:</h3>
+    <div>
+      <input id="radio-eject-isolated-temporary" type="radio"
+          name="eject_strategy" value="isolated_temporary"
+          {% if eject_strategy == "isolated_temporary" %}checked=""{% endif %}/>
+      <label for="radio-eject-isolated-temporary">
+        Create a temporary container for that specific tab
+      </label>
+    </div>
+    <div>
+      <input id="radio-eject-remain-in-place" type="radio"
+          name="eject_strategy" value="remain_in_place"
+          {% if eject_strategy == "remain_in_place" %}checked=""{% endif %}/>
+      <label for="radio-eject-remain-in-place">
+        Ignore and allow the tab to remain in that container
+      </label>
+    </div>
+    <div>
+      <input id="radio-eject-reassignment" type="radio"
+          name="eject_strategy" value="reassignment"
+          {% if eject_strategy == "reassignment" %}checked=""{% endif %}/>
+      <label for="radio-eject-reassignment">
+        Reassign as if the tab is uncontained
+      </label>
+    </div>
+    <button>Save</button>
+  </form>
 </section>

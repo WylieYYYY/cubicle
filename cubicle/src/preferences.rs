@@ -30,6 +30,7 @@ pub struct Preferences {
 ///   that a new temporary container will always be created for the tab.
 #[derive(Clone, Derivative, Deserialize, Eq, PartialEq, Serialize)]
 #[derivative(Default)]
+#[serde(rename_all = "snake_case")]
 pub enum ContainerAssignStrategy {
     #[derivative(Default)]
     SuffixedTemporary,
@@ -66,6 +67,7 @@ impl ContainerAssignStrategy {
 ///   [ContainerAssignStrategy].
 #[derive(Clone, Derivative, Deserialize, Serialize)]
 #[derivative(Default)]
+#[serde(rename_all = "snake_case")]
 pub enum ContainerEjectStrategy {
     #[derivative(Default)]
     IsolatedTemporary,

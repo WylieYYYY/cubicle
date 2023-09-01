@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::container::ContainerOwner;
 use crate::domain::psl::Psl;
 use crate::interop::storage;
+use crate::message::Message;
 use crate::migrate::{self, Version};
 use crate::preferences::Preferences;
 use crate::util::errors::CustomError;
@@ -29,6 +30,9 @@ impl GlobalContext {
         if stored_version == Version::default() {
             storage::set_with_serde_keys(&context).await?;
             storage::set_with_serde_keys(&migrate::CURRENT_VERSION).await?;
+            Message::PslUpdate { url: None }
+                .act(&mut &mut context)
+                .await?;
             Ok(context)
         } else if stored_version != migrate::CURRENT_VERSION {
             Err(CustomError::UnsupportedVersion)

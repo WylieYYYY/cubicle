@@ -1,7 +1,6 @@
 'use strict';
 
 import {CONTEXT_MAP} from './context-map.js';
-import {messageContainerSelection} from '../popup.js';
 
 // update screen is the same as the new container screen and can be reused
 CONTEXT_MAP.set('update-container', CONTEXT_MAP.get('new-container'));
@@ -11,6 +10,27 @@ CONTEXT_MAP.set('update-container', CONTEXT_MAP.get('new-container'));
  * cookie store ID, otherwise it may be interpreted as a control sequence.
  */
 export const COOKIE_STORE_ID_MARKER_PREFIX = 'b64_';
+
+/**
+ * Messages the background about a container selection, then updates the popup.
+ * @param {string} value - The ID of the selected container if it starts with
+ *     [COOKIE_STORE_ID_MARKER_PREFIX], `new` if a new container is requested,
+ *     and `none` if "no container" (default cookie store) is selected.
+ */
+export function messageContainerSelection(value) {
+  if (value === 'new') redirect({view: 'new_container'});
+  else if (value === 'none') redirect({view: 'welcome'});
+  else {
+    redirect({
+      view: 'container_detail', cookie_store_id: value,
+    });
+  }
+
+  const btnDelete = document.getElementById('btn-delete');
+  if (value.startsWith(COOKIE_STORE_ID_MARKER_PREFIX)) {
+    btnDelete.style.visibility = 'visible';
+  } else btnDelete.style.visibility = 'hidden';
+}
 
 /**
  * Updates the popup with the specified composed view.

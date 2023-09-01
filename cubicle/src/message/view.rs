@@ -2,6 +2,7 @@
 use std::{iter, ops::DerefMut};
 
 use chrono::offset::Utc;
+use chrono::Duration;
 use serde::Deserialize;
 use strum::IntoEnumIterator;
 use strum_macros::Display;
@@ -172,11 +173,16 @@ fn options_body(global_context: &mut impl DerefMut<Target = GlobalContext>) -> C
     let mut context = Context::new();
     let last_updated = global_context.psl.last_updated();
     context.insert("psl_last_updated", &last_updated);
-    let days_since_update = Utc::now()
-        .date_naive()
-        .signed_duration_since(last_updated)
-        .num_days();
-    context.insert("psl_no_update", &(days_since_update < 7));
+    let duration_since_update = Utc::now().date_naive().signed_duration_since(last_updated);
+    context.insert(
+        "psl_no_update",
+        &(duration_since_update < Duration::weeks(1)),
+    );
+    context.insert(
+        "assign_strategy",
+        &global_context.preferences.assign_strategy,
+    );
+    context.insert("eject_strategy", &global_context.preferences.eject_strategy);
     context
 }
 

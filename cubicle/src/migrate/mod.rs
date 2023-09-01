@@ -3,6 +3,8 @@
 
 pub mod import;
 
+use chrono::NaiveDate;
+use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 
 /// Versioning of [GlobalContext](crate::context::GlobalContext)
@@ -13,3 +15,6 @@ pub struct Version {
     pub version: (i16, i16, i16),
 }
 pub const CURRENT_VERSION: Version = Version { version: (0, 1, 0) };
+pub static BUILTIN_PSL_VERSION: Lazy<NaiveDate> = Lazy::new(|| {
+    NaiveDate::from_ymd_opt(2023, 5, 8).expect("date checked to be valid at compile time")
+});

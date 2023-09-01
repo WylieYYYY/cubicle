@@ -33,17 +33,11 @@ use crate::util::errors::CustomError;
 #[wasm_bindgen(start)]
 async fn main() -> Result<(), JsError> {
     panic::set_hook(Box::new(console_error_panic_hook::hook));
-    {
-        let mut global_context = GLOBAL_CONTEXT.lock().await;
-        *global_context = GlobalContext::from_storage().await?;
-        if global_context.psl.is_empty() {
-            Message::PslUpdate { url: None }
-                .act(&mut global_context)
-                .await?;
-        }
-        Ok(())
-    }
-    .map_err(|error: CustomError| JsError::new(&error.to_string()))
+    let mut global_context = GLOBAL_CONTEXT.lock().await;
+    *global_context = GlobalContext::from_storage()
+        .await
+        .map_err(|error: CustomError| JsError::new(&error.to_string()))?;
+    Ok(())
 }
 
 /// Persisting data for determining which container to switch to.

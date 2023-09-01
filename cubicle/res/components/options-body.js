@@ -14,10 +14,27 @@ function messagePslUpdate(event) {
 }
 
 /**
+ * Messages the background that the preferences should be saved and applied.
+ * @param {Event} event - Generated submit event, for extracting form data.
+ */
+function messageApplyPreferences(event) {
+  const preferences = {};
+  for (const [key, value] of new FormData(event.target).entries()) {
+    preferences[key] = value;
+  }
+  browser.runtime.sendMessage({
+    message_type: 'apply_preferences',
+    preferences: preferences,
+  });
+}
+
+/**
  * Entrypoint for the extension preferences page.
  * Mainly for attaching listeners.
  */
 export default function main() {
   document.getElementById('btn-psl-update')
       .addEventListener('click', messagePslUpdate);
+  document.getElementById('form-preferences')
+      .addEventListener('submit', messageApplyPreferences);
 }
