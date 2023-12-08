@@ -13,8 +13,10 @@ use self::container::ContainerAction;
 use self::view::View;
 use crate::context::GlobalContext;
 use crate::domain::psl::Psl;
+use crate::interop::tabs;
 use crate::interop::{self, fetch::Fetch, storage};
 use crate::migrate;
+use crate::migrate::import::MigrateType;
 use crate::preferences::Preferences;
 use crate::util::errors::CustomError;
 
@@ -23,10 +25,22 @@ use crate::util::errors::CustomError;
 #[derive(Deserialize)]
 #[serde(rename_all = "snake_case", tag = "message_type")]
 pub enum Message {
-    RequestPage { view: View },
-    ContainerAction { action: ContainerAction },
-    PslUpdate { url: Option<String> },
-    ApplyPreferences { preferences: Preferences },
+    RequestPage {
+        view: View,
+    },
+    ContainerAction {
+        action: ContainerAction,
+    },
+    MigrateContainer {
+        migrate_type: MigrateType,
+        detect_temp: bool,
+    },
+    PslUpdate {
+        url: Option<String>,
+    },
+    ApplyPreferences {
+        preferences: Preferences,
+    },
 }
 
 impl Message {
@@ -43,11 +57,23 @@ impl Message {
                 let cookie_store_id = action.act(global_context).await?;
                 let existing_container = global_context.containers.get(&cookie_store_id);
                 storage::store_single_entry(&cookie_store_id, &existing_container).await?;
-                Ok(View::FetchAllContainers {
+                View::FetchAllContainers {
                     selected: existing_container.and(Some(cookie_store_id)),
                 }
                 .render(global_context)
-                .await?)
+                .await
+            }
+            MigrateContainer {
+                migrate_type,
+                detect_temp,
+            } => {
+                global_context.containers = migrate_type.act(detect_temp).await?;
+                storage::set_with_serde_keys(&global_context.containers).await?;
+                View::FetchAllContainers {
+                    selected: Some(tabs::current_tab_cookie_store_id().await?),
+                }
+                .render(global_context)
+                .await
             }
             PslUpdate { url } => {
                 let local_path = interop::prepend_extension_base_url("public_suffix_list.dat");

@@ -20,8 +20,10 @@ function messageSubmitIdentityDetails(event) {
     identityDetails[key] = value;
   }
   stateUpdateRedirect('container_action', {
-    action: 'submit_identity_details',
-    cookie_store_id: cookieStoreId, details: identityDetails,
+    action: {
+      action: 'submit_identity_details',
+      cookie_store_id: cookieStoreId, details: identityDetails,
+    },
   });
 }
 

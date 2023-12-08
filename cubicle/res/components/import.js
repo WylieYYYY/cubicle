@@ -9,8 +9,7 @@ import {stateUpdateRedirect} from './context.js';
  *     additional import details.
  */
 function messageMigration(migrateType) {
-  stateUpdateRedirect('container_action', {
-    action: 'migrate_container',
+  stateUpdateRedirect('migrate_container', {
     migrate_type: migrateType,
     detect_temp: document.getElementById('check-detect-temp').checked,
   });

@@ -9,8 +9,10 @@ import {stateUpdateRedirect} from './context.js';
 function messageContainerDeletion() {
   const selectContainer = document.getElementById('select-container');
   stateUpdateRedirect('container_action', {
-    action: 'delete_container',
-    cookie_store_id: selectContainer.value,
+    action: {
+      action: 'delete_container',
+      cookie_store_id: selectContainer.value,
+    },
   });
 }
 

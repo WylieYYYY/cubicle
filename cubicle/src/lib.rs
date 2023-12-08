@@ -74,8 +74,11 @@ pub async fn on_tab_updated(tab_id: isize, tab_properties: JsValue) -> Result<()
         let tab_id = TabId::new(tab_id);
         let tab_properties = interop::cast_or_standard_mismatch::<TabProperties>(tab_properties)?;
 
-        let Some((new_domain, cookie_store_id, opener_is_managed)) = tab_new_domain(tab_id.clone(),
-            &tab_properties).await else { return Ok(()); };
+        let Some((new_domain, cookie_store_id, opener_is_managed)) =
+            tab_new_domain(tab_id.clone(), &tab_properties).await
+        else {
+            return Ok(());
+        };
         tab_id.stop_loading().await;
 
         let mut global_context = GLOBAL_CONTEXT.lock().await;
@@ -120,8 +123,9 @@ pub async fn on_tab_removed(tab_id: isize) {
     let cookie_store_id = (*tab_det.container_handle).clone();
     drop(tab_det);
     let mut global_context = GLOBAL_CONTEXT.lock().await;
-    let Some(mut container) = global_context.containers
-        .get_mut(cookie_store_id.clone()) else { return; };
+    let Some(mut container) = global_context.containers.get_mut(cookie_store_id.clone()) else {
+        return;
+    };
 
     if container.variant == ContainerVariant::Temporary {
         let deleted = container.delete_if_empty().await.unwrap_or(false);

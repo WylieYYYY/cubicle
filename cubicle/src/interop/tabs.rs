@@ -58,7 +58,9 @@ impl TabProperties {
     /// The domain, [None] if the tab does not have a URL.
     /// Fails if a domain cannot be extracted from the contained URL.
     pub fn domain(&self) -> Result<Option<EncodedDomain>, CustomError> {
-        let Some(url) = &self.url else { return Ok(None); };
+        let Some(url) = &self.url else {
+            return Ok(None);
+        };
         interop::url_to_domain(url).map(Some)
     }
 

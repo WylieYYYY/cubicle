@@ -10,6 +10,13 @@
 		"cookies",
 		"storage"
 	],
+
+	"browser_specific_settings": {
+		"gecko": {
+			"id": "{69b2cfb8-4568-499a-9c38-858d8499f71c}"
+		}
+	},
+
 	"browser_action": {
 		"default_popup": "popup.html"
 	},

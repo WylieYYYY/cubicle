@@ -24,10 +24,12 @@ function colorizeSuffixInput(element) {
 function messageUpdateSuffix(element) {
   const selectContainer = document.getElementById('select-container');
   stateUpdateRedirect('container_action', {
-    action: 'update_suffix',
-    cookie_store_id: selectContainer.value,
-    old_suffix: element.id.slice('suffix-'.length),
-    new_suffix: element.value,
+    action: {
+      action: 'update_suffix',
+      cookie_store_id: selectContainer.value,
+      old_suffix: element.id.slice('suffix-'.length),
+      new_suffix: element.value,
+    },
   });
 }
 

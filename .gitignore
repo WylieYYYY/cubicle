@@ -1,4 +1,11 @@
+.cargo/
+!.cargo/config.toml
+
 build/
 target/
 Cargo.lock
 cubicle.xpi
+
+.direnv
+.envrc
+shell.nix

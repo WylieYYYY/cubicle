@@ -41,7 +41,7 @@ impl Psl {
             .map_err(|error| CustomError::IoError(error.kind()))?
         {
             let Some(strip) = buf.strip_suffix('\n').map(String::from) else {
-               return Err(CustomError::IoError(ErrorKind::OutOfMemory));
+                return Err(CustomError::IoError(ErrorKind::OutOfMemory));
             };
             if !(strip.starts_with("//") || strip.is_empty()) {
                 set.insert(Suffix::try_from(&*strip)?);

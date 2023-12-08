@@ -61,7 +61,7 @@ export async function stateUpdateRedirect(messageType, messageEnum) {
   mainElement.replaceChildren();
   const selectContainer = document.getElementById('select-container');
   selectContainer.disabled = true;
-  const message = {message_type: messageType, action: messageEnum};
+  const message = {message_type: messageType, ...messageEnum};
   return browser.runtime.sendMessage(message).then((html) => {
     selectContainer.innerHTML = html;
     selectContainer.disabled = false;
