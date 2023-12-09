@@ -16,6 +16,34 @@ extern "C" {
     fn storage_get(keys: &JsValue) -> Promise;
     #[wasm_bindgen(js_namespace=["browser", "storage", "local"], js_name="set")]
     fn storage_set(keys: &JsValue) -> Promise;
+    #[wasm_bindgen(js_namespace=["browser", "storage", "local"], js_name="remove")]
+    fn storage_remove(keys: &JsValue) -> Promise;
+}
+
+/// Gets all stored entries as an object,
+/// fails if the browser indicates so.
+pub async fn get_all() -> Result<Object, CustomError> {
+    JsFuture::from(storage_get(&JsValue::NULL))
+        .await
+        .or(Err(CustomError::FailedStorageOperation {
+            verb_prep: String::from("load from"),
+        }))
+        .map(Object::from)
+}
+
+/// Removes all entries with the given collection of keys,
+/// fails if the browser indicates so.
+pub async fn remove_entries<S, K>(keys: &S) -> Result<(), CustomError>
+where
+    S: IntoIterator<Item = K> + Serialize,
+    K: Serialize,
+{
+    JsFuture::from(storage_remove(&interop::to_jsvalue(keys)))
+        .await
+        .or(Err(CustomError::FailedStorageOperation {
+            verb_prep: String::from("remove from"),
+        }))?;
+    Ok(())
 }
 
 /// Populates a structure with values, fails if the browser indicates so.

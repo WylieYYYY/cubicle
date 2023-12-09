@@ -41,6 +41,7 @@ pub trait IdentityDetailsProvider {
 /// future to avoid incorrect deserialization.
 #[derive(
     Clone,
+    Debug,
     Deserialize,
     Display,
     EnumCountMacro,
@@ -113,5 +114,27 @@ impl IdentityIcon {
         context.insert("name", &self.to_string());
         Tera::one_off(ICON_URL_TEMPLATE, &context, false)
             .expect("controlled enum template rendering")
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_rolling_color() {
+        let initial_color = IdentityColor::new_rolling_color();
+        for _ in 1..(IdentityColor::COUNT - 2) {
+            assert_ne!(initial_color, IdentityColor::new_rolling_color());
+        }
+        assert_eq!(initial_color, IdentityColor::new_rolling_color());
+    }
+
+    #[test]
+    fn test_icon_url() {
+        assert_eq!(
+            "resource://usercontext-content/circle.svg",
+            IdentityIcon::Circle.url()
+        );
     }
 }

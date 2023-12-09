@@ -5,12 +5,16 @@ stages:
   - test
   - build
 
+variables:
+  CARGO_HOME: /packages/cargo
+  CARGO_TARGET_DIR: /packages/cargo/target
+
 lint:
   stage: lint
   script:
-    - npm install eslint eslint-config-google
     - cargo fmt --check
     - cargo clippy -- --deny warnings
+    - mv /packages/node/node_modules ./
     - node node_modules/eslint/bin/eslint.js 'cubicle/res/*.js' 'cubicle/res/components/*.js'
 
 test:
@@ -22,7 +26,7 @@ build:
   stage: build
   script:
     - cargo build --target wasm32-unknown-unknown --verbose
-    - wasm-bindgen --target web target/wasm32-unknown-unknown/debug/*.wasm --out-dir build/
+    - wasm-bindgen --target web /packages/cargo/target/wasm32-unknown-unknown/debug/*.wasm --out-dir build/
     - cd build/ && zip -r -FS ../cubicle.xpi -- *
   artifacts:
     paths:

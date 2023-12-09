@@ -229,6 +229,11 @@ mod test {
     }
 
     #[test]
+    fn test_encode_suffix() {
+        assert_eq!("xn--g6w251d.net", Suffix::tfrom("測試.net").encoded());
+    }
+
+    #[test]
     fn test_match_suffix() {
         let suffix_set = BTreeSet::from(test_suffixes());
         let table = [

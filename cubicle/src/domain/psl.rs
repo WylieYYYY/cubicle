@@ -93,10 +93,13 @@ mod test {
     async fn test_psl_from_stream() {
         let mut builtin_bytes =
             Cursor::new(std::include_bytes!("../../res/public_suffix_list.dat"));
-        let builtin_psl = Psl::from_stream(&mut builtin_bytes, Utc::now().date_naive())
+        let last_updated = Utc::now().date_naive();
+        let builtin_psl = Psl::from_stream(&mut builtin_bytes, last_updated)
             .await
             .expect("from_stream should read the builtin PSL with no error");
         assert_eq!(builtin_psl.len(), 9021);
+        assert!(!builtin_psl.is_empty());
+        assert_eq!(last_updated, builtin_psl.last_updated());
     }
 
     #[async_std::test]
