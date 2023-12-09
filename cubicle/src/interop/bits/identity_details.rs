@@ -12,6 +12,7 @@ use tera::{Context, Tera};
 /// check that [color](IdentityDetails::color) is not
 /// [Cycle](IdentityColor::Cycle) before deserialization.
 #[derive(Deserialize, Serialize)]
+#[cfg_attr(test, derive(Debug, PartialEq, Eq))]
 pub struct IdentityDetails {
     pub color: IdentityColor,
     pub icon: IdentityIcon,
@@ -41,7 +42,6 @@ pub trait IdentityDetailsProvider {
 /// future to avoid incorrect deserialization.
 #[derive(
     Clone,
-    Debug,
     Deserialize,
     Display,
     EnumCountMacro,
@@ -52,6 +52,7 @@ pub trait IdentityDetailsProvider {
     PartialEq,
     Serialize,
 )]
+#[cfg_attr(test, derive(Debug))]
 #[serde(rename_all = "lowercase")]
 #[strum(serialize_all = "lowercase")]
 pub enum IdentityColor {
@@ -87,6 +88,7 @@ const ICON_URL_TEMPLATE: &str = "resource://usercontext-content/{{name}}.svg";
 /// Known supported icon names, [Unknown](IdentityIcon::Unknown) is for
 /// potentially new icons in the future.
 #[derive(Clone, Deserialize, Display, EnumIter, EnumString, Serialize)]
+#[cfg_attr(test, derive(Debug, PartialEq, Eq))]
 #[serde(rename_all = "lowercase")]
 #[strum(serialize_all = "lowercase")]
 pub enum IdentityIcon {

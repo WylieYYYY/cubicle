@@ -9,6 +9,8 @@ pub use super::bits::identity_details::*;
 
 use base64::prelude::*;
 use js_sys::{Object, Promise};
+#[cfg(test)]
+use mockall::mock;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
@@ -113,6 +115,7 @@ impl Display for ContextualIdentity {
 /// [CookieStoreId::deserialize_inner] or [CookieStoreId::serialize_inner].
 /// All operations may fail if the identity specified by the ID does not exist.
 #[derive(Clone, Eq, Hash, PartialEq)]
+#[cfg_attr(test, derive(Debug))]
 pub struct CookieStoreId {
     inner: String,
 }
@@ -212,5 +215,43 @@ impl Serialize for CookieStoreId {
     {
         let b64 = BASE64_URL_SAFE_NO_PAD.encode(&self.inner);
         serializer.serialize_str(&(String::from(Base64Visitor::MARKER_PREFIX) + &b64))
+    }
+}
+
+#[cfg(test)]
+mock! {
+    pub ContextualIdentity {
+        pub async fn fetch_all() -> Result<Vec<Self>, CustomError>;
+        pub async fn create(mut details: IdentityDetails) -> Result<Self, CustomError>;
+        pub async fn update(&mut self, details: IdentityDetails) -> Result<(), CustomError>;
+        pub fn cookie_store_id(&self) -> &CookieStoreId;
+
+        fn private_deserialize(deserializable: Result<ContextualIdentity, ()>) -> Self;
+        fn private_serialize(&self) -> ContextualIdentity;
+    }
+
+    impl IdentityDetailsProvider for ContextualIdentity {
+        fn identity_details(&self) -> IdentityDetails;
+    }
+}
+
+#[cfg(test)]
+impl<'de> Deserialize<'de> for MockContextualIdentity {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let serializable = ContextualIdentity::deserialize(deserializer).map_err(|_| ());
+        Ok(MockContextualIdentity::private_deserialize(serializable))
+    }
+}
+
+#[cfg(test)]
+impl Serialize for MockContextualIdentity {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        self.private_serialize().serialize(serializer)
     }
 }

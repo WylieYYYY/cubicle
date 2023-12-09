@@ -8,8 +8,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::domain::suffix::{self, MatchMode, Suffix};
 use crate::domain::EncodedDomain;
+#[mockall_double::double]
+use crate::interop::contextual_identities::ContextualIdentity;
 use crate::interop::contextual_identities::{
-    ContextualIdentity, CookieStoreId, IdentityDetails, IdentityDetailsProvider,
+    CookieStoreId, IdentityDetails, IdentityDetailsProvider,
 };
 use crate::util::errors::CustomError;
 
@@ -24,6 +26,29 @@ pub struct ContainerOwner {
 }
 
 impl ContainerOwner {
+    /// Fetches all [ContextualIdentity] and treat them as [Container],
+    /// detects temporary containers by name if needed.
+    /// Returns a new [ContainerOwner] with all containers detected.
+    /// Fails if the browser indicates so.
+    pub async fn fetch_all(detect_temp: bool) -> Result<Self, CustomError> {
+        let containers = ContextualIdentity::fetch_all()
+            .await?
+            .into_iter()
+            .map(|identity| {
+                let name = identity.identity_details().name;
+                let mut container = Container::from(identity);
+                if detect_temp && name.starts_with("Temporary Container ") {
+                    container.variant = ContainerVariant::Temporary;
+                }
+                container
+            });
+        let mut owner = Self::default();
+        for container in containers {
+            owner.insert(container);
+        }
+        Ok(owner)
+    }
+
     /// Inserts a container, this will also add suffix mappings for lookup.
     pub fn insert(&mut self, container: Container) {
         for suffix in container.suffixes.iter() {
@@ -89,19 +114,6 @@ impl ContainerOwner {
     /// Iterator over owned containers.
     pub fn iter(&self) -> impl Iterator<Item = &Container> {
         self.id_container_map.values()
-    }
-}
-
-impl FromIterator<Container> for ContainerOwner {
-    fn from_iter<T>(iter: T) -> Self
-    where
-        T: IntoIterator<Item = Container>,
-    {
-        let mut instance = Self::default();
-        for container in iter {
-            instance.insert(container);
-        }
-        instance
     }
 }
 
@@ -237,4 +249,48 @@ impl From<ContextualIdentity> for Container {
 pub enum ContainerVariant {
     Permanent,
     Temporary,
+}
+
+#[cfg(test)]
+mod test {
+    use async_std::sync::Mutex;
+    use once_cell::sync::Lazy;
+
+    use super::*;
+    use crate::interop::contextual_identities::{CookieStoreId, MockContextualIdentity};
+
+    static CONTEXTUAL_IDENTITY_MUTEX: Lazy<Mutex<()>> = Lazy::new(|| Mutex::new(()));
+
+    async fn test_container(
+        details: IdentityDetails,
+        suffixes: BTreeSet<Suffix>,
+        mock_identity_setup: impl FnOnce(&mut MockContextualIdentity),
+    ) -> Result<Container, CustomError> {
+        let mut mock_identity = MockContextualIdentity::new();
+        mock_identity
+            .expect_cookie_store_id()
+            .return_const(CookieStoreId::new(String::from("mock_id")));
+        mock_identity_setup(&mut mock_identity);
+        let ctx_mock_identity = MockContextualIdentity::create_context();
+        ctx_mock_identity.expect().return_once(|details| {
+            assert_eq!(IdentityDetails::default(), details);
+            Ok(mock_identity)
+        });
+
+        Container::create(details, ContainerVariant::Temporary, suffixes).await
+    }
+
+    #[async_std::test]
+    async fn test_container_create_and_handle() -> Result<(), CustomError> {
+        let _guard = CONTEXTUAL_IDENTITY_MUTEX.lock().await;
+        let container =
+            test_container(IdentityDetails::default(), BTreeSet::default(), |_| ()).await?;
+
+        assert_eq!(1usize, Arc::strong_count(container.handle()));
+        assert_eq!(
+            CookieStoreId::new(String::from("mock_id")),
+            **container.handle()
+        );
+        Ok(())
+    }
 }
