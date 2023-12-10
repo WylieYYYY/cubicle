@@ -11,7 +11,7 @@ pub mod tabs;
 
 use std::any;
 
-use js_sys::{JsString, Promise, Reflect};
+use js_sys::{JsString, Object, Promise, Reflect};
 use serde::{Deserialize, Serialize};
 use serde_wasm_bindgen::Serializer;
 use wasm_bindgen::prelude::*;
@@ -79,10 +79,15 @@ where
 
 /// Gets a value within a [JsValue] using a string key via reflection.
 /// Fails if no such key was found.
-pub fn get_or_standard_mismatch(target: &JsValue, key: &str) -> Result<JsValue, CustomError> {
-    Reflect::get(target, &JsString::from(key)).or(Err(CustomError::StandardMismatch {
-        message: format!("key `{}` is missing", key),
-    }))
+pub fn get_or_standard_mismatch(target: &Object, key: &str) -> Result<JsValue, CustomError> {
+    let value = Reflect::get(target, &JsString::from(key)).expect("type checked to be object");
+    if value.is_undefined() {
+        Err(CustomError::StandardMismatch {
+            message: format!("key `{}` is missing", key),
+        })
+    } else {
+        Ok(value)
+    }
 }
 
 /// Casts a [JsValue] into a [Deserialize] type.
@@ -94,4 +99,75 @@ where
     serde_wasm_bindgen::from_value(target).or(Err(CustomError::StandardMismatch {
         message: format!("`{}` expected", any::type_name::<T>()),
     }))
+}
+
+#[cfg(test)]
+pub mod test {
+    use std::collections::HashMap;
+
+    use wasm_bindgen_test::wasm_bindgen_test;
+
+    use crate::util::test::TestFrom;
+
+    use super::*;
+
+    #[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
+    struct TestStruct {
+        attribute: bool,
+    }
+
+    #[wasm_bindgen_test]
+    fn test_url_to_domain() {
+        let example_com_domain = url_to_domain("https://example.com/index.html");
+        assert!(example_com_domain.is_ok());
+        assert_eq!(
+            EncodedDomain::tfrom("example.com"),
+            example_com_domain.expect("checked ok")
+        );
+        assert!(url_to_domain("gibberish").is_err());
+    }
+
+    #[wasm_bindgen_test]
+    fn test_to_jsvalue() {
+        let mut test_map = HashMap::new();
+        test_map.insert("key", "value");
+
+        let json_jsvalue = to_jsvalue(&test_map);
+        assert_eq!(
+            Ok(JsValue::UNDEFINED),
+            Reflect::get(&json_jsvalue, &JsString::from("values"))
+        );
+        let map_jsvalue =
+            serde_wasm_bindgen::to_value(&test_map).expect("serialization fail unlikely");
+        let map_jsvalue_values = Reflect::get(&map_jsvalue, &JsString::from("values"));
+
+        assert!(map_jsvalue_values.is_ok());
+        assert!(map_jsvalue_values.expect("checked ok").is_function());
+    }
+
+    #[wasm_bindgen_test]
+    fn test_get_or_standard_mismatch() {
+        let known_object = Object::from(
+            serde_wasm_bindgen::to_value(&TestStruct { attribute: true })
+                .expect("known value serialization"),
+        );
+        let existing_attr = get_or_standard_mismatch(&known_object, "attribute");
+        assert!(existing_attr.is_ok());
+        assert_eq!(JsValue::TRUE, existing_attr.expect("checked ok"));
+        assert!(get_or_standard_mismatch(&known_object, "dne").is_err());
+    }
+
+    #[wasm_bindgen_test]
+    fn test_cast_or_standard_mismatch() {
+        let empty_object = JsValue::from(Object::new());
+        assert!(cast_or_standard_mismatch::<TestStruct>(empty_object).is_err());
+        let test_jsvalue = serde_wasm_bindgen::to_value(&TestStruct { attribute: true })
+            .expect("known value serialization");
+        let converted = cast_or_standard_mismatch::<TestStruct>(test_jsvalue);
+        assert!(converted.is_ok());
+        assert_eq!(
+            TestStruct { attribute: true },
+            converted.expect("checked ok")
+        );
+    }
 }

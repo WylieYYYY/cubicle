@@ -18,3 +18,15 @@ pub const CURRENT_VERSION: Version = Version { version: (0, 1, 0) };
 pub static BUILTIN_PSL_VERSION: Lazy<NaiveDate> = Lazy::new(|| {
     NaiveDate::from_ymd_opt(2023, 5, 8).expect("date checked to be valid at compile time")
 });
+
+#[cfg(test)]
+mod test {
+    use wasm_bindgen_test::wasm_bindgen_test;
+
+    use super::*;
+
+    #[wasm_bindgen_test]
+    fn test_psl_version_no_panic() {
+        let _ = BUILTIN_PSL_VERSION.clone();
+    }
+}

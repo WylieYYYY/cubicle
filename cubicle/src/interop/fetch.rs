@@ -8,7 +8,7 @@ use std::task::{Context, Poll, Waker};
 use async_std::io::prelude::*;
 use async_std::sync::Mutex;
 use derivative::Derivative;
-use js_sys::{Error, Uint8Array};
+use js_sys::{Error, Object, Uint8Array};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{
@@ -114,7 +114,12 @@ impl Fetch {
                 .try_lock()
                 .expect("promise chaining should be executed synchronously");
             if resolve {
-                let done = interop::get_or_standard_mismatch(&value, "done")
+                let value_object = Object::try_from(&value)
+                    .ok_or(CustomError::StandardMismatch {
+                        message: String::from("expected `value` to be an object"),
+                    })
+                    .unwrap();
+                let done = interop::get_or_standard_mismatch(value_object, "done")
                     .and_then(interop::cast_or_standard_mismatch)
                     .map(|done| if done { Done } else { Delivered })
                     .or(Err(io::Error::new(
@@ -122,7 +127,7 @@ impl Fetch {
                         "browser's did not return a valid done value",
                     )));
                 state.success = Some(done);
-                state.buffer = bits::reader_value_done_pair::buffer(&value);
+                state.buffer = bits::reader_value_done_pair::buffer(value_object);
             } else {
                 let io_error = io::Error::new(
                     ErrorKind::BrokenPipe,

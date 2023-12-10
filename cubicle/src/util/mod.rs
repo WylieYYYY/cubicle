@@ -116,6 +116,12 @@ impl Visitor<'_> for SingleStringVisitor {
 pub mod test {
     use std::fmt::Debug;
 
+    use serde::Deserializer;
+    use serde_assert::{Deserializer as AssertDeserializer, Token, Tokens};
+    use wasm_bindgen_test::wasm_bindgen_test;
+
+    use super::*;
+
     /// [From]-like trait for testing with known inputs.
     pub trait TestFrom<T> {
         fn tfrom(value: T) -> Self;
@@ -129,5 +135,57 @@ pub mod test {
         fn tfrom(value: T) -> Self {
             Self::try_from(value).expect("controlled test")
         }
+    }
+
+    #[wasm_bindgen_test]
+    fn test_key_range() {
+        let set = BTreeSet::from_iter(1..=10);
+        let mut set_key_range = set.key_range(2..=4);
+        assert_eq!(Some(2), set_key_range.next().copied());
+        assert_eq!(Some(4), set_key_range.next_back().copied());
+
+        let map = BTreeMap::from_iter([(1, "a"), (2, "b"), (3, "c"), (4, "d")]);
+        let mut map_key_range = map.key_range(2..=3);
+        assert_eq!(Some(2), map_key_range.next().copied());
+        assert_eq!(Some(3), map_key_range.next_back().copied());
+    }
+
+    #[wasm_bindgen_test]
+    fn test_base64_visitor() {
+        let mut deserializer = AssertDeserializer::builder()
+            .tokens(Tokens(vec![
+                Token::Str(String::from(Base64Visitor::MARKER_PREFIX) + "dGVzdA"),
+                Token::Str(String::from(Base64Visitor::MARKER_PREFIX) + "dGVzdA=="),
+                Token::Str(String::from("dGVzdA")),
+            ]))
+            .build();
+        assert_eq!(
+            Ok(String::from("test")),
+            deserializer.deserialize_str(Base64Visitor)
+        );
+        assert!(deserializer.deserialize_str(Base64Visitor).is_err());
+        assert!(deserializer.deserialize_str(Base64Visitor).is_err());
+    }
+
+    #[wasm_bindgen_test]
+    fn test_single_string_visitor() {
+        let mut deserializer = AssertDeserializer::builder()
+            .tokens(Tokens(vec![
+                Token::Str(String::from("test")),
+                Token::Str(String::from("test")),
+                Token::Bool(false),
+            ]))
+            .build();
+        assert_eq!(
+            Ok(String::from("test")),
+            deserializer.deserialize_string(SingleStringVisitor)
+        );
+        assert_eq!(
+            Ok(String::from("test")),
+            deserializer.deserialize_str(SingleStringVisitor)
+        );
+        assert!(deserializer
+            .deserialize_string(SingleStringVisitor)
+            .is_err());
     }
 }

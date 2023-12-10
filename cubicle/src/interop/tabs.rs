@@ -4,7 +4,7 @@
 
 use std::collections::HashMap;
 
-use js_sys::{Array, Promise};
+use js_sys::{Array, Object, Promise};
 use serde::{Deserialize, Serialize, Serializer};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
@@ -154,7 +154,12 @@ pub async fn current_tab_cookie_store_id() -> Result<CookieStoreId, CustomError>
     let query_obj = HashMap::from([("active", true), ("currentWindow", true)]);
     let active_tabs = JsFuture::from(tab_query(interop::to_jsvalue(&query_obj))).await;
     if let Ok(active_tabs) = active_tabs.as_ref().map(Array::from) {
-        let prop = super::get_or_standard_mismatch(&active_tabs.pop(), "cookieStoreId")?;
+        let first_tab_jsvalue = active_tabs.pop();
+        let first_tab =
+            Object::try_from(&first_tab_jsvalue).ok_or(CustomError::StandardMismatch {
+                message: String::from("expected `first_tab` to be an object"),
+            })?;
+        let prop = super::get_or_standard_mismatch(first_tab, "cookieStoreId")?;
         Ok(CookieStoreId::new(super::cast_or_standard_mismatch(prop)?))
     } else {
         Err(CustomError::FailedFetchActiveTab)
