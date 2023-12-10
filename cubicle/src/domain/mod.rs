@@ -98,19 +98,19 @@ impl Ord for EncodedDomain {
 }
 
 #[cfg(test)]
-mod test {
-    use std::assert_eq;
+pub mod test {
+    use wasm_bindgen_test::wasm_bindgen_test;
 
     use super::*;
     use crate::util::test::TestFrom;
 
-    #[test]
+    #[wasm_bindgen_test]
     fn test_domain_tld() {
         assert_eq!(EncodedDomain::tfrom("example.com").tld().raw(), "com");
         assert_eq!(EncodedDomain::tfrom("com").tld().raw(), "com");
     }
 
-    #[test]
+    #[wasm_bindgen_test]
     fn test_domain_parent() {
         assert_eq!(
             EncodedDomain::tfrom("example.com").parent(),
@@ -119,7 +119,7 @@ mod test {
         assert_eq!(EncodedDomain::tfrom("com").parent(), None);
     }
 
-    #[test]
+    #[wasm_bindgen_test]
     fn test_domain_try_from() {
         assert!(EncodedDomain::try_from("a.com").is_ok());
         assert!(EncodedDomain::try_from("測試.net").is_ok());
@@ -128,14 +128,14 @@ mod test {
         assert!(EncodedDomain::try_from("com.").is_err());
     }
 
-    #[test]
+    #[wasm_bindgen_test]
     fn test_domain_reverse() {
         assert!(EncodedDomain::tfrom("sub.example.com")
             .reverse()
             .eq(["com", "example", "sub"]));
     }
 
-    #[test]
+    #[wasm_bindgen_test]
     fn test_domain_eq() {
         assert_eq!(
             EncodedDomain::tfrom("example.net"),
@@ -147,7 +147,7 @@ mod test {
         );
     }
 
-    #[test]
+    #[wasm_bindgen_test]
     fn test_domain_order() {
         let table = [
             "example.com",

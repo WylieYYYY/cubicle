@@ -206,8 +206,10 @@ impl SuffixType {
 }
 
 #[cfg(test)]
-mod test {
+pub mod test {
     use std::collections::BTreeSet;
+
+    use wasm_bindgen_test::wasm_bindgen_test;
 
     use super::*;
     use crate::util::test::TestFrom;
@@ -228,12 +230,12 @@ mod test {
         .map(Suffix::tfrom)
     }
 
-    #[test]
+    #[wasm_bindgen_test]
     fn test_encode_suffix() {
         assert_eq!("xn--g6w251d.net", Suffix::tfrom("測試.net").encoded());
     }
 
-    #[test]
+    #[wasm_bindgen_test]
     fn test_match_suffix() {
         let suffix_set = BTreeSet::from(test_suffixes());
         let table = [
@@ -260,7 +262,7 @@ mod test {
         }
     }
 
-    #[test]
+    #[wasm_bindgen_test]
     fn test_suffix_match_ordering() {
         let table = [
             (("*.com", "exmaple.com"), true),
@@ -279,7 +281,7 @@ mod test {
         }
     }
 
-    #[test]
+    #[wasm_bindgen_test]
     fn test_suffix_try_from() {
         assert!(Suffix::try_from("*.com").is_ok());
         assert!(Suffix::try_from("*com").is_err());
@@ -293,7 +295,7 @@ mod test {
         assert!(Suffix::try_from("com.").is_err());
     }
 
-    #[test]
+    #[wasm_bindgen_test]
     fn suffix_sorting() {
         assert!(test_suffixes()
             .windows(2)

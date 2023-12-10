@@ -79,17 +79,16 @@ impl Psl {
 }
 
 #[cfg(test)]
-mod test {
-    use std::assert_eq;
-
+pub mod test {
     use async_std::io::Cursor;
     use chrono::Utc;
     use indoc::indoc;
+    use wasm_bindgen_test::wasm_bindgen_test;
 
     use super::*;
     use crate::util::test::TestFrom;
 
-    #[async_std::test]
+    #[wasm_bindgen_test]
     async fn test_psl_from_stream() {
         let mut builtin_bytes =
             Cursor::new(std::include_bytes!("../../res/public_suffix_list.dat"));
@@ -102,7 +101,7 @@ mod test {
         assert_eq!(last_updated, builtin_psl.last_updated());
     }
 
-    #[async_std::test]
+    #[wasm_bindgen_test]
     async fn test_psl_match_suffix() {
         let mut bytes = Cursor::new(
             indoc! {"

@@ -1,5 +1,10 @@
 //! A flexible container manager.
 
+#[cfg(test)]
+use wasm_bindgen_test::wasm_bindgen_test_configure;
+#[cfg(test)]
+wasm_bindgen_test_configure!(run_in_worker);
+
 pub mod container;
 pub mod context;
 pub mod domain;
@@ -31,7 +36,7 @@ use crate::util::errors::CustomError;
 /// Entry point for loading this extension.
 /// Mainly to load or populate a [GlobalContext].
 #[wasm_bindgen(start)]
-async fn main() -> Result<(), JsError> {
+async fn start() -> Result<(), JsError> {
     panic::set_hook(Box::new(console_error_panic_hook::hook));
     let mut global_context = GLOBAL_CONTEXT.lock().await;
     *global_context = GlobalContext::from_storage()

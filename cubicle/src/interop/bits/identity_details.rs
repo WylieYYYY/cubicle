@@ -120,10 +120,12 @@ impl IdentityIcon {
 }
 
 #[cfg(test)]
-mod test {
+pub mod test {
+    use wasm_bindgen_test::wasm_bindgen_test;
+
     use super::*;
 
-    #[test]
+    #[wasm_bindgen_test]
     fn test_rolling_color() {
         let initial_color = IdentityColor::new_rolling_color();
         for _ in 1..(IdentityColor::COUNT - 2) {
@@ -132,7 +134,7 @@ mod test {
         assert_eq!(initial_color, IdentityColor::new_rolling_color());
     }
 
-    #[test]
+    #[wasm_bindgen_test]
     fn test_icon_url() {
         assert_eq!(
             "resource://usercontext-content/circle.svg",

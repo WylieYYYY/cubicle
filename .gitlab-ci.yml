@@ -20,7 +20,7 @@ lint:
 test:
   stage: test
   script:
-    - cargo test --lib
+    - GECKODRIVER=/packages/geckodriver/geckodriver cargo test --target wasm32-unknown-unknown
 
 build:
   stage: build

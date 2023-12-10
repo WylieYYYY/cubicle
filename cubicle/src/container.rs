@@ -252,9 +252,10 @@ pub enum ContainerVariant {
 }
 
 #[cfg(test)]
-mod test {
+pub mod test {
     use async_std::sync::Mutex;
     use once_cell::sync::Lazy;
+    use wasm_bindgen_test::wasm_bindgen_test;
 
     use super::*;
     use crate::interop::contextual_identities::{CookieStoreId, MockContextualIdentity};
@@ -265,7 +266,7 @@ mod test {
         details: IdentityDetails,
         suffixes: BTreeSet<Suffix>,
         mock_identity_setup: impl FnOnce(&mut MockContextualIdentity),
-    ) -> Result<Container, CustomError> {
+    ) -> Container {
         let mut mock_identity = MockContextualIdentity::new();
         mock_identity
             .expect_cookie_store_id()
@@ -277,14 +278,16 @@ mod test {
             Ok(mock_identity)
         });
 
-        Container::create(details, ContainerVariant::Temporary, suffixes).await
+        Container::create(details, ContainerVariant::Temporary, suffixes)
+            .await
+            .expect("mocked contextual identity")
     }
 
-    #[async_std::test]
+    #[wasm_bindgen_test]
     async fn test_container_create_and_handle() -> Result<(), CustomError> {
         let _guard = CONTEXTUAL_IDENTITY_MUTEX.lock().await;
         let container =
-            test_container(IdentityDetails::default(), BTreeSet::default(), |_| ()).await?;
+            test_container(IdentityDetails::default(), BTreeSet::default(), |_| ()).await;
 
         assert_eq!(1usize, Arc::strong_count(container.handle()));
         assert_eq!(
