@@ -1,6 +1,8 @@
+<div id="data-icon-link" data-icon-link="{{icon_link}}" style="display: none;"></div>
+<div id="data-icon-color" data-icon-color="{{icon_color}}" style="display: none;"></div>
 <ul style="list-style: none; padding: 0;">
   {% for suffix in suffixes %}
-    <li style="display: flex; align-items: center;">
+    <li style="display: flex; align-items: center; margin-bottom: 3px;">
       <input id="suffix-{{suffix.1}}" class="input-suffix" type="text"
           maxlength="256" placeholder="new suffix ... ↵"
           value="{{suffix.0}}" title="{{suffix.1}}" style="flex-grow: 2; margin: auto 0.5rem;"/>

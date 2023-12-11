@@ -156,6 +156,11 @@ impl TryFrom<&str> for Suffix {
 
 impl PartialOrd for Suffix {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+impl Ord for Suffix {
+    fn cmp(&self, other: &Self) -> Ordering {
         let tld_ordering = self.domain.tld().cmp(&other.domain.tld());
         let level_ordering = self
             .domain
@@ -164,18 +169,10 @@ impl PartialOrd for Suffix {
             .cmp(&other.domain.reverse().count());
         let type_ordering = self.suffix_type.cmp(&other.suffix_type);
         let alpha_ordering = self.domain.reverse().cmp(other.domain.reverse());
-        Some(
-            tld_ordering
-                .then(level_ordering)
-                .then(type_ordering)
-                .then(alpha_ordering),
-        )
-    }
-}
-impl Ord for Suffix {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.partial_cmp(other)
-            .expect("controlled PartialOrd implementation")
+        tld_ordering
+            .then(level_ordering)
+            .then(type_ordering)
+            .then(alpha_ordering)
     }
 }
 

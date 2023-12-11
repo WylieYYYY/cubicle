@@ -18,11 +18,24 @@ export const COOKIE_STORE_ID_MARKER_PREFIX = 'b64_';
  *     and `none` if "no container" (default cookie store) is selected.
  */
 export function messageContainerSelection(value) {
-  if (value === 'new') redirect({view: 'new_container'});
-  else if (value === 'none') redirect({view: 'welcome'});
+  const iconBtn = document.getElementById('btn-icon');
+  const iconImg = document.getElementById('img-icon');
+
+  const resetIconStyle = () => {
+    iconBtn.style.backgroundColor = 'revert';
+    iconImg.src = '';
+  };
+
+  if (value === 'new') redirect({view: 'new_container'}).then(resetIconStyle);
+  else if (value === 'none') redirect({view: 'welcome'}).then(resetIconStyle);
   else {
     redirect({
       view: 'container_detail', cookie_store_id: value,
+    }).then(() => {
+      iconBtn.style.backgroundColor = document
+          .getElementById('data-icon-color').getAttribute('data-icon-color');
+      iconImg.src = document.getElementById('data-icon-link')
+          .getAttribute('data-icon-link');
     });
   }
 

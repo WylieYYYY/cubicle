@@ -155,6 +155,8 @@ fn delete_prompt(container: &Container) -> Context {
 /// View for the body of the pop-up if a container is selected.
 fn container_detail(container: &Container) -> Context {
     let mut context = Context::new();
+    context.insert("icon_link", &container.identity_details().icon.url());
+    context.insert("icon_color", &container.identity_details().color);
     context.insert(
         "suffixes",
         &container

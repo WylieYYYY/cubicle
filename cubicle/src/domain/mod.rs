@@ -87,13 +87,12 @@ impl PartialEq for EncodedDomain {
 
 impl PartialOrd for EncodedDomain {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.reverse().cmp(other.reverse()))
+        Some(self.cmp(other))
     }
 }
 impl Ord for EncodedDomain {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.partial_cmp(other)
-            .expect("controlled PartialOrd implementation")
+        self.reverse().cmp(other.reverse())
     }
 }
 

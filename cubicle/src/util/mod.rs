@@ -55,7 +55,7 @@ pub struct Base64Visitor;
 impl Base64Visitor {
     /// Marker that was prepended to the base 64 value,
     /// mainly for prompting external consumers.
-    pub const MARKER_PREFIX: &str = "b64_";
+    pub const MARKER_PREFIX: &'static str = "b64_";
 }
 
 impl Visitor<'_> for Base64Visitor {
