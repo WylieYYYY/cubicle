@@ -1,14 +1,14 @@
 <div id="data-icon-link" data-icon-link="{{icon_link}}" style="display: none;"></div>
 <div id="data-icon-color" data-icon-color="{{icon_color}}" style="display: none;"></div>
-<ul style="list-style: none; padding: 0;">
+<ul style="list-style: none; width: 100%; padding: 0;">
   {% for suffix in suffixes %}
     <li style="display: flex; align-items: center; margin-bottom: 3px;">
       <input id="suffix-{{suffix.1}}" class="input-suffix" type="text"
           maxlength="256" placeholder="new suffix ... ↵"
           value="{{suffix.0}}" title="{{suffix.1}}" style="flex-grow: 2; margin: auto 0.5rem;"/>
-      <div id="option-btn-{{suffix.1}}" style="margin-inline-end: 0.5rem;">
-        <button aria-label="Link suffix" class="center btn">
-          <span aria-hidden="true" class="icon">&#xe157;</span>
+      <div style="{% if suffix.1 == "" %}visibility: hidden;{% endif %} margin-inline-end: 0.5rem;">
+        <button id="btn-option-{{suffix.1}}" aria-label="Link suffix" class="center btn">
+          <span aria-hidden="true" class="icon">&#xe5cd;</span>
         </button>
       </div>
     </li>

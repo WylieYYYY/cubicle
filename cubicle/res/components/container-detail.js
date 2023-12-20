@@ -18,17 +18,19 @@ function colorizeSuffixInput(element) {
 /**
  * Messages the background that a suffix entry will need to be modified,
  * then updates the popup.
- * @param {HTMLInputElement} element - Text input element with an encoded
- *     suffix ID and raw suffix value.
+ * @param {string} encodedOldSuffix - Encoded version of the old suffix, can be
+ *     extracted from assosciated element's ID.
+ * @param {string} newSuffix - New suffix for replacement, empty string for
+ *     deleting the suffix instead.
  */
-function messageUpdateSuffix(element) {
+function messageUpdateSuffix(encodedOldSuffix, newSuffix) {
   const selectContainer = document.getElementById('select-container');
   stateUpdateRedirect('container_action', {
     action: {
       action: 'update_suffix',
       cookie_store_id: selectContainer.value,
-      old_suffix: element.id.slice('suffix-'.length),
-      new_suffix: element.value,
+      old_suffix: encodedOldSuffix,
+      new_suffix: newSuffix,
     },
   });
 }
@@ -39,11 +41,20 @@ function messageUpdateSuffix(element) {
  */
 export default function main() {
   for (const element of document.getElementsByClassName('input-suffix')) {
+    const encodedOldSuffix = element.id.slice('suffix-'.length);
+
     element.addEventListener('input', (event) => {
       colorizeSuffixInput(event.target);
     });
     element.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter') messageUpdateSuffix(event.target);
+      if (event.key === 'Enter') {
+        messageUpdateSuffix(encodedOldSuffix, event.target.value);
+      }
     });
+
+    document.getElementById('btn-option-' + encodedOldSuffix)
+        .addEventListener('click', () => {
+          messageUpdateSuffix(encodedOldSuffix, '');
+        });
   }
 }

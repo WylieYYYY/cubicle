@@ -16,6 +16,7 @@ export const COOKIE_STORE_ID_MARKER_PREFIX = 'b64_';
  * @param {string} value - The ID of the selected container if it starts with
  *     [COOKIE_STORE_ID_MARKER_PREFIX], `new` if a new container is requested,
  *     and `none` if "no container" (default cookie store) is selected.
+ * @return {Promise} Promise that fulfils once the update is fully complete.
  */
 export function messageContainerSelection(value) {
   const iconBtn = document.getElementById('btn-icon');
@@ -25,10 +26,17 @@ export function messageContainerSelection(value) {
     iconBtn.style.visibility = 'hidden';
   };
 
-  if (value === 'new') redirect({view: 'new_container'}).then(resetIconStyle);
-  else if (value === 'none') redirect({view: 'welcome'}).then(resetIconStyle);
-  else {
-    redirect({
+  const btnDelete = document.getElementById('btn-delete');
+  if (value.startsWith(COOKIE_STORE_ID_MARKER_PREFIX)) {
+    btnDelete.style.visibility = 'visible';
+  } else btnDelete.style.visibility = 'hidden';
+
+  if (value === 'new') {
+    return redirect({view: 'new_container'}).then(resetIconStyle);
+  } else if (value === 'none') {
+    return redirect({view: 'welcome'}).then(resetIconStyle);
+  } else {
+    return redirect({
       view: 'container_detail', cookie_store_id: value,
     }).then(() => {
       iconBtn.style.visibility = 'visible';
@@ -38,11 +46,6 @@ export function messageContainerSelection(value) {
           .getAttribute('data-icon-link');
     });
   }
-
-  const btnDelete = document.getElementById('btn-delete');
-  if (value.startsWith(COOKIE_STORE_ID_MARKER_PREFIX)) {
-    btnDelete.style.visibility = 'visible';
-  } else btnDelete.style.visibility = 'hidden';
 }
 
 /**
