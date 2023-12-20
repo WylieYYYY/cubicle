@@ -10,7 +10,7 @@ h1, h2 {
     margin-bottom: 0.25rem;
 }
 
-input[type='radio']:checked + label[for] {
+input[type='radio']:checked + label[for].framed {
     border: 2px solid aqua;
 }
 

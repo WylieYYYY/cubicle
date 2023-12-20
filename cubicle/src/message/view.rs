@@ -84,6 +84,7 @@ impl View {
 /// This may be renamed later to be less misleading.
 fn new_container(existing_container: Option<&Container>) -> Context {
     let mut context = Context::new();
+
     context.insert(
         "colors",
         &IdentityColor::iter().collect::<Vec<IdentityColor>>(),
@@ -94,9 +95,19 @@ fn new_container(existing_container: Option<&Container>) -> Context {
             .map(|icon| (icon.clone(), icon.url()))
             .collect::<Vec<(IdentityIcon, String)>>(),
     );
-    if let Some(container) = existing_container {
-        context.insert("details", &container.identity_details());
-    }
+
+    context.insert("update_existing", &existing_container.is_some());
+    context.insert(
+        "details",
+        &match existing_container {
+            Some(container) => container.identity_details(),
+            None => IdentityDetails {
+                name: String::new(),
+                ..Default::default()
+            },
+        },
+    );
+
     context
 }
 
