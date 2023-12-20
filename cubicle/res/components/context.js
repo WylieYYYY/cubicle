@@ -22,8 +22,7 @@ export function messageContainerSelection(value) {
   const iconImg = document.getElementById('img-icon');
 
   const resetIconStyle = () => {
-    iconBtn.style.backgroundColor = 'revert';
-    iconImg.src = '';
+    iconBtn.style.visibility = 'hidden';
   };
 
   if (value === 'new') redirect({view: 'new_container'}).then(resetIconStyle);
@@ -32,6 +31,7 @@ export function messageContainerSelection(value) {
     redirect({
       view: 'container_detail', cookie_store_id: value,
     }).then(() => {
+      iconBtn.style.visibility = 'visible';
       iconBtn.style.backgroundColor = document
           .getElementById('data-icon-color').getAttribute('data-icon-color');
       iconImg.src = document.getElementById('data-icon-link')

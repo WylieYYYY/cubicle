@@ -5,12 +5,16 @@
     It is useful to determine if two domains should share data,
     and is used for creating isolated temporary containers.
   </p>
-  <div>
+  <form id="form-psl" method="dialog">
+    <input id="url-psl-url" type="url" name="psl_url"
+        placeholder="https://publicsuffix.org/list/public_suffix_list.dat"
+        pattern="https://.*" value="https://publicsuffix.org/list/public_suffix_list.dat"
+        {% if psl_no_update %}disabled=""{% endif %}/>
     <button id="btn-psl-update" {% if psl_no_update %}disabled=""{% endif %}>
       Update List
     </button>
     <span>Last updated: <span id="lbl-psl-date">{{psl_last_updated}}</span></span>
-  </div>
+  </form>
   <form id="form-preferences" method="dialog">
     <h2>Container Assignment Rule</h2>
     <h3>When an uncontained tab is created with no applicable container:</h3>

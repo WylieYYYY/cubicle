@@ -103,7 +103,6 @@ fn new_container(existing_container: Option<&Container>) -> Context {
 /// View for existing container list with additional action entries.
 /// Returns a string of HTML fragment, which is an `option` element.
 /// Fails if the browser indicates so.
-/// May be changed to have a better name truncation scheme.
 async fn fetch_all_containers(
     global_context: &mut impl DerefMut<Target = GlobalContext>,
     selected: &CookieStoreId,

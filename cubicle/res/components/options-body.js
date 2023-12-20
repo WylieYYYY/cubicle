@@ -8,9 +8,13 @@
  */
 function messagePslUpdate(event) {
   event.target.disabled = true;
+  const pslUrl = document.getElementById('url-psl-url').value;
+  pslUrl.disabled = true;
   const lblPslDate = document.getElementById('lbl-psl-date');
-  browser.runtime.sendMessage({message_type: 'psl_update', url: null})
-      .then((newDate) => lblPslDate.innerText = newDate);
+  browser.runtime.sendMessage({
+    message_type: 'psl_update',
+    url: pslUrl === ''? null : pslUrl,
+  }).then((newDate) => lblPslDate.innerText = newDate);
 }
 
 /**

@@ -8,10 +8,11 @@
   </head>
   <body style="width: 15rem;">
     <nav class="center" style="margin: auto 0.5rem;">
-      <button id="btn-icon" aria-label="Select icon" class="center btn">
+      <button id="btn-icon" aria-label="Select icon" class="center btn" style="visibility: hidden;">
         <img id="img-icon" class="icon" style="filter: invert(100%);"/>
       </button>
-      <select id="select-container" style="flex-grow: 2; margin: auto 0.5rem;">
+      <select id="select-container"
+          style="flex-grow: 2; margin: auto 0.5rem; overflow: hidden; text-overflow: ellipsis;">
         <option value="none">No Container</option>
         <option value="new">+ Create New</option>
       </select>
@@ -20,7 +21,7 @@
         <span aria-hidden="true" class="icon">&#xe872;</span>
       </button>
     </nav>
-    <main style="display: flex; height: 18rem; overflow-y: scroll;">
+    <main style="display: flex; height: 18rem; overflow-y: scroll; word-wrap: anywhere;">
       <div style="display: flex; width: 100%; justify-content: center; flex-direction: column;">
         <h1 class="center">Loading...</h1>
         <div aria-hidden="true" class="icon" style="width: 5rem; height: 5rem;
