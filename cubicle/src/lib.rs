@@ -28,6 +28,7 @@ use crate::container::ContainerVariant;
 use crate::context::GlobalContext;
 use crate::domain::EncodedDomain;
 use crate::interop::contextual_identities::CookieStoreId;
+use crate::interop::storage;
 use crate::interop::tabs::{TabId, TabProperties};
 use crate::message::Message;
 use crate::tab::TabDeterminant;
@@ -87,12 +88,10 @@ pub async fn on_tab_updated(tab_id: isize, tab_properties: JsValue) -> Result<()
         tab_id.stop_loading().await;
 
         let mut global_context = GLOBAL_CONTEXT.lock().await;
+        let eject_strategy = global_context.preferences.eject_strategy.clone();
         let assign_strategy = global_context.preferences.assign_strategy.clone();
         let container_handle = if opener_is_managed {
-            global_context
-                .preferences
-                .eject_strategy
-                .clone()
+            eject_strategy
                 .match_container(
                     &mut global_context,
                     new_domain.clone(),
@@ -137,6 +136,7 @@ pub async fn on_tab_removed(tab_id: isize) {
         drop(container);
         if deleted {
             global_context.containers.remove(&cookie_store_id);
+            drop(storage::remove_entries(&[cookie_store_id]).await);
         }
     }
 }

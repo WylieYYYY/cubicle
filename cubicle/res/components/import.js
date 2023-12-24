@@ -1,6 +1,6 @@
 'use strict';
 
-import {stateUpdateRedirect} from './context.js';
+import {logStatus, stateUpdateRedirect} from './context.js';
 
 /**
  * Messages the background that a container migration is requested,
@@ -12,7 +12,7 @@ function messageMigration(migrateType) {
   stateUpdateRedirect('migrate_container', {
     migrate_type: migrateType,
     detect_temp: document.getElementById('check-detect-temp').checked,
-  });
+  }).then(logStatus('Import was successful'));
 }
 
 /**

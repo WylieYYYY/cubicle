@@ -1,6 +1,7 @@
 'use strict';
 
 import {
+  logStatus,
   messageContainerSelection,
   stateUpdateRedirect,
 } from './context.js';
@@ -19,7 +20,7 @@ function messageContainerDeletion(value) {
       action: 'delete_container',
       cookie_store_id: value,
     },
-  });
+  }).then(logStatus('Container was deleted'));
 }
 
 /**

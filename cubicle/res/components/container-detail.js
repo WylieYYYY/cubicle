@@ -1,6 +1,6 @@
 'use strict';
 
-import {stateUpdateRedirect} from './context.js';
+import {logStatus, stateUpdateRedirect} from './context.js';
 
 /**
  * Changes the color of a text input element to correspond to the suffix type.
@@ -32,7 +32,7 @@ function messageUpdateSuffix(encodedOldSuffix, newSuffix) {
       old_suffix: encodedOldSuffix,
       new_suffix: newSuffix,
     },
-  });
+  }).then(logStatus(`Suffix '${newSuffix}' was added`));
 }
 
 /**

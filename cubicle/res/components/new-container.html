@@ -6,8 +6,9 @@
 <dialog style="border: none;" open="">
   <form id="form-new-container" method="dialog">
     <input type="text" name="name" maxlength="40" placeholder="container name"
-        value="{{details.name}}"
-        style="flex-grow: 2; margin: auto 0.5rem;"/>
+        value="{{details.name}}" pattern="\s*(?:\S+\s*)+"
+        title="container name with some non-whitespace characters"
+        style="flex-grow: 2; margin: auto 0.5rem;" required=""/>
     <h2>Color</h2>
     <ul style="display: flex; flex-wrap: wrap; list-style: none; margin: 0; padding: 0;">
       {% for color in colors %}

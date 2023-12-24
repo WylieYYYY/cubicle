@@ -12,6 +12,18 @@ CONTEXT_MAP.set('update-container', CONTEXT_MAP.get('new-container'));
 export const COOKIE_STORE_ID_MARKER_PREFIX = 'b64_';
 
 /**
+ * Creates a function that displays a message in the status bar when called.
+ * Useful for logging in a thenable handler.
+ * @param {string} message - Message to be displayed.
+ * @return {Function} Function that displays the message when called.
+ */
+export function logStatus(message) {
+  return () => {
+    document.getElementById('lbl-status').innerText = message;
+  };
+}
+
+/**
  * Messages the background about a container selection, then updates the popup.
  * @param {string} value - The ID of the selected container if it starts with
  *     [COOKIE_STORE_ID_MARKER_PREFIX], `new` if a new container is requested,

@@ -2,6 +2,7 @@
 
 import {
   COOKIE_STORE_ID_MARKER_PREFIX,
+  logStatus,
   stateUpdateRedirect,
 } from './context.js';
 
@@ -19,12 +20,14 @@ function messageSubmitIdentityDetails(event) {
   for (const [key, value] of new FormData(event.target).entries()) {
     identityDetails[key] = value;
   }
+
+  const verb = cookieStoreId === null? 'created' : 'updated';
   stateUpdateRedirect('container_action', {
     action: {
       action: 'submit_identity_details',
       cookie_store_id: cookieStoreId, details: identityDetails,
     },
-  });
+  }).then(logStatus('Container was ' + verb));
 }
 
 /**
