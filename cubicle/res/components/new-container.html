@@ -42,6 +42,9 @@
         </li>
       {% endfor %}
     </ul>
+    {% if not update_existing %}
+      <button id="btn-recording">Record from navigation</button>
+    {% endif %}
     <button style="float: inline-end;">
       {% if update_existing %}
         Update

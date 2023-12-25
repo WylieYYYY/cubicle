@@ -128,7 +128,7 @@ async fn fetch_all_containers(
             .filter_map(|container| {
                 use ContainerVariant::*;
                 match container.variant {
-                    Permanent => {
+                    Permanent | Recording { .. } => {
                         Some(((**container.handle()).clone(), container.identity_details()))
                     }
                     Temporary => None,
@@ -167,6 +167,10 @@ fn container_detail(container: &Container) -> Context {
     let mut context = Context::new();
     context.insert("icon_link", &container.identity_details().icon.url());
     context.insert("icon_color", &container.identity_details().color);
+    context.insert(
+        "is_recording",
+        &matches!(container.variant, ContainerVariant::Recording { .. }),
+    );
     context.insert(
         "suffixes",
         &container

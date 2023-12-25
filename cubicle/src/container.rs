@@ -147,6 +147,9 @@ impl DerefMut for OwnerHandle<'_> {
 
 impl Drop for OwnerHandle<'_> {
     fn drop(&mut self) {
+        if let ContainerVariant::Recording { .. } = self.variant {
+            return;
+        }
         self.owner
             .suffix_id_map
             .retain(|_suffix, cookie_store_id| *cookie_store_id != self.cookie_store_id);
@@ -243,11 +246,14 @@ impl From<ContextualIdentity> for Container {
 /// Variants of containers.
 /// - [Permanent](ContainerVariant::Permanent) means that the container is
 ///   created by the user and all container operations are managed by the user.
+/// - [Recording](ContainerVariant::Recording) means that the container should
+///   be recreated with the new name after tabs movements are captured.
 /// - [Temporary](ContainerVariant::Temporary) means that the container is
 ///   generated, and should be deleted once all tabs within it have closed.
 #[derive(Deserialize, Eq, PartialEq, Serialize)]
 pub enum ContainerVariant {
     Permanent,
+    Recording { active: bool },
     Temporary,
 }
 

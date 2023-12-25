@@ -13,6 +13,7 @@ import {
  */
 function messageSubmitIdentityDetails(event) {
   const selectValue = document.getElementById('select-container').value;
+  const shouldRecord = event.submitter.id === 'btn-recording';
   const cookieStoreId = selectValue.startsWith(
       COOKIE_STORE_ID_MARKER_PREFIX)? selectValue : null;
 
@@ -26,6 +27,7 @@ function messageSubmitIdentityDetails(event) {
     action: {
       action: 'submit_identity_details',
       cookie_store_id: cookieStoreId, details: identityDetails,
+      should_record: shouldRecord,
     },
   }).then(logStatus('Container was ' + verb));
 }

@@ -1,6 +1,10 @@
 'use strict';
 
-import {logStatus, stateUpdateRedirect} from './context.js';
+import {
+  logStatus,
+  messageContainerSelection,
+  stateUpdateRedirect,
+} from './context.js';
 
 /**
  * Changes the color of a text input element to correspond to the suffix type.
@@ -13,6 +17,20 @@ function colorizeSuffixInput(element) {
     case '!': element.style.color = 'crimson'; break;
     default: element.style.color = 'black';
   }
+}
+
+/**
+ * Messages the background that the recorded suffixes are acceptable,
+ * and should be persisted as a permanent container.
+ */
+function messageConfirmRecording() {
+  const selectContainer = document.getElementById('select-container');
+  stateUpdateRedirect('container_action', {
+    action: {
+      action: 'confirm_recording',
+      cookie_store_id: selectContainer.value,
+    },
+  }).then(logStatus('Recoding confirmed'));
 }
 
 /**
@@ -40,6 +58,13 @@ function messageUpdateSuffix(encodedOldSuffix, newSuffix) {
  * Mainly for attaching listeners.
  */
 export default function main() {
+  document.getElementById('btn-refresh')?.addEventListener('click', () => {
+    const selectContainer = document.getElementById('select-container');
+    messageContainerSelection(selectContainer.value);
+  });
+  document.getElementById('btn-confirm-recording')?.addEventListener('click',
+      messageConfirmRecording);
+
   for (const element of document.getElementsByClassName('input-suffix')) {
     const encodedOldSuffix = element.id.slice('suffix-'.length);
 

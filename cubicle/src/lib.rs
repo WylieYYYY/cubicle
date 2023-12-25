@@ -26,6 +26,7 @@ use wasm_bindgen::prelude::*;
 
 use crate::container::ContainerVariant;
 use crate::context::GlobalContext;
+use crate::domain::suffix::{Suffix, SuffixType};
 use crate::domain::EncodedDomain;
 use crate::interop::contextual_identities::CookieStoreId;
 use crate::interop::storage;
@@ -88,6 +89,21 @@ pub async fn on_tab_updated(tab_id: isize, tab_properties: JsValue) -> Result<()
         tab_id.stop_loading().await;
 
         let mut global_context = GLOBAL_CONTEXT.lock().await;
+
+        if let Some(mut current_container) =
+            global_context.containers.get_mut(cookie_store_id.clone())
+        {
+            if let ContainerVariant::Recording { active: true, .. } = current_container.variant {
+                current_container
+                    .suffixes
+                    .insert(Suffix::new(SuffixType::Normal, new_domain));
+                return tab_id
+                    .reload_tab()
+                    .await
+                    .map_err(|error| JsError::new(&error.to_string()));
+            }
+        }
+
         let eject_strategy = global_context.preferences.eject_strategy.clone();
         let assign_strategy = global_context.preferences.assign_strategy.clone();
         let container_handle = if opener_is_managed {

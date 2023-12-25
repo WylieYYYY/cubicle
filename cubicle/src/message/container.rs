@@ -8,7 +8,9 @@ use serde::Deserialize;
 use crate::container::{Container, ContainerVariant};
 use crate::context::GlobalContext;
 use crate::domain::suffix::Suffix;
-use crate::interop::contextual_identities::{CookieStoreId, IdentityDetails};
+use crate::interop::contextual_identities::{
+    CookieStoreId, IdentityDetails, IdentityDetailsProvider,
+};
 use crate::util::errors::CustomError;
 
 /// Message type for container operations that are not tab related.
@@ -18,6 +20,7 @@ pub enum ContainerAction {
     SubmitIdentityDetails {
         cookie_store_id: Option<CookieStoreId>,
         details: IdentityDetails,
+        should_record: bool,
     },
     UpdateSuffix {
         cookie_store_id: CookieStoreId,
@@ -25,6 +28,9 @@ pub enum ContainerAction {
         new_suffix: String,
     },
     DeleteContainer {
+        cookie_store_id: CookieStoreId,
+    },
+    ConfirmRecording {
         cookie_store_id: CookieStoreId,
     },
 }
@@ -42,6 +48,7 @@ impl ContainerAction {
             SubmitIdentityDetails {
                 cookie_store_id,
                 details,
+                should_record,
             } => {
                 let cookie_store_id = match cookie_store_id {
                     Some(cookie_store_id) => {
@@ -53,12 +60,13 @@ impl ContainerAction {
                         (**container.handle()).clone()
                     }
                     None => {
-                        let container = Container::create(
-                            details,
-                            ContainerVariant::Permanent,
-                            BTreeSet::default(),
-                        )
-                        .await?;
+                        let variant = if should_record {
+                            ContainerVariant::Recording { active: true }
+                        } else {
+                            ContainerVariant::Permanent
+                        };
+                        let container =
+                            Container::create(details, variant, BTreeSet::default()).await?;
                         let cookie_store_id = (**container.handle()).clone();
                         global_context.containers.insert(container);
                         cookie_store_id
@@ -96,12 +104,31 @@ impl ContainerAction {
             DeleteContainer { cookie_store_id } => {
                 let container = global_context
                     .containers
-                    .get_mut(cookie_store_id.clone())
+                    .get(&cookie_store_id)
                     .expect("valid ID passed from message");
                 container.delete().await?;
-                drop(container);
                 global_context.containers.remove(&cookie_store_id);
                 Ok(cookie_store_id)
+            }
+
+            ConfirmRecording { cookie_store_id } => {
+                let container = global_context
+                    .containers
+                    .get(&cookie_store_id)
+                    .expect("valid ID passed from message");
+                let new_container = Container::create(
+                    container.identity_details(),
+                    ContainerVariant::Permanent,
+                    container.suffixes.clone(),
+                )
+                .await?;
+
+                container.delete().await?;
+                global_context.containers.remove(&cookie_store_id);
+
+                let new_cookie_store_id = (**new_container.handle()).clone();
+                global_context.containers.insert(new_container);
+                Ok(new_cookie_store_id)
             }
         }
     }

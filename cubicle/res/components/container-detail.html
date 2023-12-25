@@ -1,13 +1,23 @@
 <div id="data-icon-link" data-icon-link="{{icon_link}}" style="display: none;"></div>
 <div id="data-icon-color" data-icon-color="{{icon_color}}" style="display: none;"></div>
-<ul style="list-style: none; width: 100%; padding: 0;">
+{% if is_recording %}
+  <section style="display: flex; margin: 0.5rem;">
+    <button id="btn-refresh" aria-label="Refresh" class="center btn">
+      <span aria-hidden="true" class="icon">&#xe627;</span>
+    </button>
+    <button id="btn-confirm-recording" style="flex-grow: 1; margin-inline-start: 0.5rem;">
+      Confirm recording
+    </button>
+  </section>
+{% endif %}
+<ul style="list-style: none; width: 100%; margin: 0; padding: 0;">
   {% for suffix in suffixes %}
     <li style="display: flex; align-items: center; margin-bottom: 3px;">
       <input id="suffix-{{suffix.1}}" class="input-suffix" type="text"
           maxlength="256" placeholder="new suffix ... ↵"
           value="{{suffix.0}}" title="{{suffix.1}}" style="flex-grow: 2; margin: auto 0.5rem;"/>
       <div style="{% if suffix.1 == "" %}visibility: hidden;{% endif %} margin-inline-end: 0.5rem;">
-        <button id="btn-option-{{suffix.1}}" aria-label="Link suffix" class="center btn">
+        <button id="btn-option-{{suffix.1}}" aria-label="Delete suffix" class="center btn">
           <span aria-hidden="true" class="icon">&#xe5cd;</span>
         </button>
       </div>

@@ -39,6 +39,8 @@ function messageContainerUpdate() {
         window.open(browser.runtime.getURL('options.html'));
         window.close();
       });
-  redirect({view: 'welcome'});
-  updateContainerListing();
+
+  updateContainerListing().then(() => {
+    messageContainerSelection(selectContainer.value);
+  });
 })();
