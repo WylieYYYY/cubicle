@@ -15,9 +15,7 @@ pub mod preferences;
 pub mod tab;
 pub mod util;
 
-use std::collections::HashMap;
 use std::panic;
-use std::sync::Arc;
 
 use async_std::sync::Mutex;
 use js_sys::JsString;
@@ -26,13 +24,9 @@ use wasm_bindgen::prelude::*;
 
 use crate::container::ContainerVariant;
 use crate::context::GlobalContext;
-use crate::domain::suffix::{Suffix, SuffixType};
-use crate::domain::EncodedDomain;
-use crate::interop::contextual_identities::CookieStoreId;
-use crate::interop::storage;
 use crate::interop::tabs::{TabId, TabProperties};
 use crate::message::Message;
-use crate::tab::TabDeterminant;
+use crate::tab::{ManagedTabs, TabDeterminant};
 use crate::util::errors::CustomError;
 
 /// Entry point for loading this extension.
@@ -51,12 +45,8 @@ async fn start() -> Result<(), JsError> {
 static GLOBAL_CONTEXT: Lazy<Mutex<GlobalContext>> =
     Lazy::new(|| Mutex::new(GlobalContext::default()));
 
-/// Map to check if tab needs to be relocated using a [TabDeterminant],
-/// there should be no false negative.
-/// Locking should only be done by short synchronous tasks,
-/// as a check is done before stop loading to prevent infinite reload.
-static MANAGED_TABS: Lazy<Mutex<HashMap<TabId, TabDeterminant>>> =
-    Lazy::new(|| Mutex::new(HashMap::default()));
+/// Managed tabs lookup for quick interception.
+static MANAGED_TABS: Lazy<Mutex<ManagedTabs>> = Lazy::new(|| Mutex::new(ManagedTabs::default()));
 
 /// Message passing function for user actions other than tab changes.
 /// See [Message] for all possible message types.
@@ -81,50 +71,48 @@ pub async fn on_tab_updated(tab_id: isize, tab_properties: JsValue) -> Result<()
         let tab_id = TabId::new(tab_id);
         let tab_properties = interop::cast_or_standard_mismatch::<TabProperties>(tab_properties)?;
 
-        let Some((new_domain, cookie_store_id, opener_is_managed)) =
-            tab_new_domain(tab_id.clone(), &tab_properties).await
+        let mut managed_tabs = MANAGED_TABS.lock().await;
+        let Some(relocation_detail) =
+            managed_tabs.check_relocation(tab_id.clone(), &tab_properties)
         else {
             return Ok(());
         };
         tab_id.stop_loading().await;
+        drop(managed_tabs);
 
         let mut global_context = GLOBAL_CONTEXT.lock().await;
 
-        if let Some(mut current_container) =
-            global_context.containers.get_mut(cookie_store_id.clone())
-        {
-            if let ContainerVariant::Recording { active: true, .. } = current_container.variant {
-                current_container
-                    .suffixes
-                    .insert(Suffix::new(SuffixType::Normal, new_domain));
-                return tab_id
-                    .reload_tab()
-                    .await
-                    .map_err(|error| JsError::new(&error.to_string()));
-            }
-        }
+        let Some(relocation_detail) = ContainerVariant::on_pre_relocation(
+            &mut global_context.containers,
+            &tab_id,
+            relocation_detail,
+        )
+        .await?
+        else {
+            return Ok(());
+        };
 
         let eject_strategy = global_context.preferences.eject_strategy.clone();
         let assign_strategy = global_context.preferences.assign_strategy.clone();
-        let container_handle = if opener_is_managed {
+        let container_handle = if relocation_detail.opener_is_managed {
             eject_strategy
                 .match_container(
                     &mut global_context,
-                    new_domain.clone(),
-                    &cookie_store_id,
+                    relocation_detail.new_domain.clone(),
+                    &relocation_detail.current_cookie_store_id,
                     assign_strategy,
                 )
                 .await?
         } else {
             assign_strategy
-                .match_container(&mut global_context, new_domain.clone())
+                .match_container(&mut global_context, relocation_detail.new_domain.clone())
                 .await?
         };
         drop(global_context);
 
         let tab_det = TabDeterminant {
             container_handle,
-            domain: new_domain,
+            domain: relocation_detail.new_domain,
         };
         assign_tab(tab_id, tab_properties, tab_det).await
     }
@@ -137,63 +125,13 @@ pub async fn on_tab_updated(tab_id: isize, tab_properties: JsValue) -> Result<()
 #[wasm_bindgen(js_name = "onTabRemoved")]
 pub async fn on_tab_removed(tab_id: isize) {
     let tab_id = TabId::new(tab_id);
-    let Some(tab_det) = MANAGED_TABS.lock().await.remove(&tab_id) else {
+    let Some(tab_det) = MANAGED_TABS.lock().await.unregister(&tab_id) else {
         return;
     };
     let cookie_store_id = (*tab_det.container_handle).clone();
     drop(tab_det);
     let mut global_context = GLOBAL_CONTEXT.lock().await;
-    let Some(mut container) = global_context.containers.get_mut(cookie_store_id.clone()) else {
-        return;
-    };
-
-    if container.variant == ContainerVariant::Temporary {
-        let deleted = container.delete_if_empty().await.unwrap_or(false);
-        drop(container);
-        if deleted {
-            global_context.containers.remove(&cookie_store_id);
-            drop(storage::remove_entries(&[cookie_store_id]).await);
-        }
-    }
-}
-
-/// Checks [MANAGED_TABS] quickly to see if the tab requires switching.
-/// If the tab is to be switched, returns a tuple of the new domain,
-/// current [CookieStoreId], and a boolean value indicating
-/// if the opener tab was managed, [None] otherwise.
-async fn tab_new_domain(
-    tab_id: TabId,
-    tab_properties: &TabProperties,
-) -> Option<(EncodedDomain, CookieStoreId, bool)> {
-    let new_domain = tab_properties.domain().ok()??;
-    let mut managed_tabs = MANAGED_TABS.lock().await;
-    let mut same_domain = false;
-
-    let opener_domain = tab_properties
-        .opener_tab_id()
-        .and_then(|tab_id| managed_tabs.get(tab_id))
-        .map(|tab_det| tab_det.domain.clone());
-    let cookie_store_id = (*managed_tabs
-        .entry(tab_id)
-        .and_modify(|old_det| {
-            if old_det.domain == new_domain {
-                same_domain = true;
-            } else {
-                old_det.domain = new_domain.clone();
-            }
-        })
-        .or_insert(TabDeterminant {
-            container_handle: Arc::new(tab_properties.cookie_store_id.clone()),
-            domain: new_domain.clone(),
-        })
-        .container_handle)
-        .clone();
-
-    (!same_domain && opener_domain.as_ref() != Some(&new_domain)).then_some((
-        new_domain,
-        cookie_store_id,
-        opener_domain.is_some(),
-    ))
+    drop(ContainerVariant::on_handle_drop(&mut global_context.containers, cookie_store_id).await);
 }
 
 /// Switchs the tab to a [Container](crate::container::Container)
@@ -205,12 +143,12 @@ async fn assign_tab(
     tab_det: TabDeterminant,
 ) -> Result<(), CustomError> {
     if *tab_det.container_handle == tab_properties.cookie_store_id {
-        MANAGED_TABS.lock().await.insert(tab_id.clone(), tab_det);
+        MANAGED_TABS.lock().await.register(tab_id.clone(), tab_det);
         tab_id.reload_tab().await
     } else {
         tab_properties.cookie_store_id = (*tab_det.container_handle).clone();
         let new_tab_id = tab_properties.new_tab().await?;
-        MANAGED_TABS.lock().await.insert(new_tab_id, tab_det);
+        MANAGED_TABS.lock().await.register(new_tab_id, tab_det);
         tab_id.close_tab().await
     }
 }

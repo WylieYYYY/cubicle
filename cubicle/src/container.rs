@@ -6,13 +6,16 @@ use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 
-use crate::domain::suffix::{self, MatchMode, Suffix};
+use crate::domain::suffix::{self, MatchMode, Suffix, SuffixType};
 use crate::domain::EncodedDomain;
 #[mockall_double::double]
 use crate::interop::contextual_identities::ContextualIdentity;
 use crate::interop::contextual_identities::{
     CookieStoreId, IdentityDetails, IdentityDetailsProvider,
 };
+use crate::interop::storage;
+use crate::interop::tabs::TabId;
+use crate::tab::RelocationDetail;
 use crate::util::errors::CustomError;
 
 /// A glorified lookup table for [Container],
@@ -51,9 +54,11 @@ impl ContainerOwner {
 
     /// Inserts a container, this will also add suffix mappings for lookup.
     pub fn insert(&mut self, container: Container) {
-        for suffix in container.suffixes.iter() {
-            self.suffix_id_map
-                .insert(suffix.clone(), (**container.handle()).clone());
+        if container.variant.allows_suffix_match() {
+            for suffix in container.suffixes.iter() {
+                self.suffix_id_map
+                    .insert(suffix.clone(), (**container.handle()).clone());
+            }
         }
         self.id_container_map
             .insert((**container.handle()).clone(), container);
@@ -147,7 +152,7 @@ impl DerefMut for OwnerHandle<'_> {
 
 impl Drop for OwnerHandle<'_> {
     fn drop(&mut self) {
-        if let ContainerVariant::Recording { .. } = self.variant {
+        if !self.variant.allows_suffix_match() {
             return;
         }
         self.owner
@@ -255,6 +260,70 @@ pub enum ContainerVariant {
     Permanent,
     Recording { active: bool },
     Temporary,
+}
+
+impl ContainerVariant {
+    /// Variant-specific actions to take before a tab is
+    /// relocated to a new container.
+    /// Returns the passed [RelocationDetail] if relocation should proceed,
+    /// [None] otherwise.
+    /// Fails if the browser indicates so.
+    pub async fn on_pre_relocation(
+        containers: &mut ContainerOwner,
+        tab_id: &TabId,
+        relocation_detail: RelocationDetail,
+    ) -> Result<Option<RelocationDetail>, CustomError> {
+        let Some(mut container) =
+            containers.get_mut(relocation_detail.current_cookie_store_id.clone())
+        else {
+            return Ok(Some(relocation_detail));
+        };
+        match container.variant {
+            Self::Recording { active: true } => {
+                container.suffixes.insert(Suffix::new(
+                    SuffixType::Normal,
+                    relocation_detail.new_domain,
+                ));
+                tab_id.reload_tab().await.and(Ok(None))
+            }
+            Self::Permanent | Self::Recording { active: false } | Self::Temporary => {
+                Ok(Some(relocation_detail))
+            }
+        }
+    }
+
+    /// Variant-specific actions to take when a container handle is dropped.
+    /// [CookieStoreId] indicates which container's handle was dropped.
+    /// Fails if the browser indicates so.
+    pub async fn on_handle_drop(
+        containers: &mut ContainerOwner,
+        cookie_store_id: CookieStoreId,
+    ) -> Result<(), CustomError> {
+        let Some(mut container) = containers.get_mut(cookie_store_id.clone()) else {
+            return Ok(());
+        };
+        match container.variant {
+            Self::Temporary => {
+                let deleted = container.delete_if_empty().await.unwrap_or(false);
+                drop(container);
+                if deleted {
+                    containers.remove(&cookie_store_id);
+                    storage::remove_entries(&[cookie_store_id]).await
+                } else {
+                    Ok(())
+                }
+            }
+            Self::Permanent | Self::Recording { .. } => Ok(()),
+        }
+    }
+
+    /// Checks if suffixes from a specific container should be matched.
+    pub fn allows_suffix_match(&self) -> bool {
+        match *self {
+            Self::Permanent | Self::Temporary => true,
+            Self::Recording { .. } => false,
+        }
+    }
 }
 
 #[cfg(test)]
