@@ -77,7 +77,7 @@ pub async fn on_tab_updated(tab_id: isize, tab_properties: JsValue) -> Result<()
         else {
             return Ok(());
         };
-        tab_id.stop_loading().await;
+        drop(tab_id.stop_loading().await);
         drop(managed_tabs);
 
         let mut global_context = GLOBAL_CONTEXT.lock().await;
@@ -94,6 +94,8 @@ pub async fn on_tab_updated(tab_id: isize, tab_properties: JsValue) -> Result<()
 
         let eject_strategy = global_context.preferences.eject_strategy.clone();
         let assign_strategy = global_context.preferences.assign_strategy.clone();
+        let should_revert_old_tab = global_context.preferences.should_revert_old_tab;
+
         let container_handle = if relocation_detail.opener_is_managed {
             eject_strategy
                 .match_container(
@@ -114,7 +116,7 @@ pub async fn on_tab_updated(tab_id: isize, tab_properties: JsValue) -> Result<()
             container_handle,
             domain: relocation_detail.new_domain,
         };
-        assign_tab(tab_id, tab_properties, tab_det).await
+        assign_tab(tab_id, tab_properties, tab_det, should_revert_old_tab).await
     }
     .map_err(|error: CustomError| JsError::new(&error.to_string()))
 }
@@ -141,14 +143,22 @@ async fn assign_tab(
     tab_id: TabId,
     mut tab_properties: TabProperties,
     tab_det: TabDeterminant,
+    should_revert_old_tab: bool,
 ) -> Result<(), CustomError> {
     if *tab_det.container_handle == tab_properties.cookie_store_id {
         MANAGED_TABS.lock().await.register(tab_id.clone(), tab_det);
         tab_id.reload_tab().await
     } else {
+        if should_revert_old_tab {
+            MANAGED_TABS.lock().await.unregister(&tab_id);
+            tab_id.back_or_close().await?;
+        } else {
+            tab_id.close_tab().await?;
+        }
+
         tab_properties.cookie_store_id = (*tab_det.container_handle).clone();
         let new_tab_id = tab_properties.new_tab().await?;
         MANAGED_TABS.lock().await.register(new_tab_id, tab_det);
-        tab_id.close_tab().await
+        Ok(())
     }
 }

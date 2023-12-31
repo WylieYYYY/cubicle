@@ -26,6 +26,11 @@ function messageApplyPreferences(event) {
   for (const [key, value] of new FormData(event.target).entries()) {
     preferences[key] = value;
   }
+
+  const shouldRevertOldTabCheckbox = document
+      .getElementById('checkbox-should-revert-old-tab');
+  preferences['should_revert_old_tab'] = shouldRevertOldTabCheckbox.checked;
+
   browser.runtime.sendMessage({
     message_type: 'apply_preferences',
     preferences: preferences,

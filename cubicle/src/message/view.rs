@@ -199,6 +199,10 @@ fn options_body(global_context: &mut impl DerefMut<Target = GlobalContext>) -> C
         &global_context.preferences.assign_strategy,
     );
     context.insert("eject_strategy", &global_context.preferences.eject_strategy);
+    context.insert(
+        "should_revert_old_tab",
+        &global_context.preferences.should_revert_old_tab,
+    );
     context
 }
 

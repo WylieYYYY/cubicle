@@ -69,10 +69,12 @@ impl TabProperties {
         self.opener_tab_id.as_ref()
     }
 
-    /// Create a new tab using this instance,
-    /// whether the resulting tab completely matches is unchecked.
+    /// Creates a new tab using this instance,
+    /// the tab index is increased by 1 to place it after the existing tab.
+    /// Whether the resulting tab completely matches is unchecked.
     /// Fails if the browser indicates so.
-    pub async fn new_tab(&self) -> Result<TabId, CustomError> {
+    pub async fn new_tab(&mut self) -> Result<TabId, CustomError> {
+        self.index += 1;
         let new_properties = interop::cast_or_standard_mismatch::<Self>(
             JsFuture::from(tab_create(interop::to_jsvalue(self)))
                 .await
@@ -100,15 +102,34 @@ impl TabId {
         Self { inner: tab_id }
     }
 
-    /// Stops the specified tab from loading.
-    /// This function does not return errors,
-    /// as failures are not recoverable and the tab will be loaded.
-    pub async fn stop_loading(&self) {
+    /// Move the specified tab backward one page into history,
+    /// close it if there is no history before it.
+    /// Fails if the browser indicates so.
+    pub async fn back_or_close(&self) -> Result<(), CustomError> {
+        let details = interop::to_jsvalue(&HashMap::from([(
+            "code",
+            "window.history.back(); window.close();",
+        )]));
+        JsFuture::from(tab_execute_js(self.inner, details))
+            .await
+            .or(Err(CustomError::FailedTabOperation {
+                verb: String::from("revert"),
+            }))?;
+        Ok(())
+    }
+
+    /// Stops the specified tab from loading, fails if the browser indicates so.
+    pub async fn stop_loading(&self) -> Result<(), CustomError> {
         let details = interop::to_jsvalue(&HashMap::from([
             ("code", "window.stop();"),
             ("runAt", "document_start"),
         ]));
-        drop(JsFuture::from(tab_execute_js(self.inner, details)).await);
+        JsFuture::from(tab_execute_js(self.inner, details))
+            .await
+            .or(Err(CustomError::FailedTabOperation {
+                verb: String::from("stop loading"),
+            }))?;
+        Ok(())
     }
 
     /// Closes the specified tab, fails if the browser indicates so.

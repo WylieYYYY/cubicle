@@ -15,10 +15,13 @@ use crate::interop::storage;
 use crate::util::errors::CustomError;
 
 /// All preferences that are not container or storage item specific.
-#[derive(Default, Deserialize, Serialize)]
+#[derive(Derivative, Deserialize, Serialize)]
+#[derivative(Default)]
 pub struct Preferences {
     pub assign_strategy: ContainerAssignStrategy,
     pub eject_strategy: ContainerEjectStrategy,
+    #[derivative(Default(value = "true"))]
+    pub should_revert_old_tab: bool,
 }
 
 /// Assigning strategy for tabs that are previously not contained,

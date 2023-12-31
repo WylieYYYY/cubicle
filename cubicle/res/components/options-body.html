@@ -59,6 +59,15 @@
         Reassign as if the tab is uncontained
       </label>
     </div>
+    <div>
+      <input id="checkbox-should-revert-old-tab" type="checkbox"
+          name="should_revert_old_tab"
+          {% if should_revert_old_tab %}checked=""{% endif %}/>
+      <label for="checkbox-should-revert-old-tab">
+        When opening a tab in new container,
+        revert old tab instead of closing it to preserve history.
+      </label>
+    </div>
     <button>Save</button>
   </form>
 </section>

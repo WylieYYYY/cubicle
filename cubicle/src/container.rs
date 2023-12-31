@@ -88,7 +88,7 @@ impl ContainerOwner {
     pub fn remove(&mut self, cookie_store_id: &CookieStoreId) -> Option<Container> {
         let container = self.id_container_map.remove(cookie_store_id);
         self.suffix_id_map
-            .retain(|_suffix, id| *id == *cookie_store_id);
+            .retain(|_suffix, id| *id != *cookie_store_id);
         container
     }
 
