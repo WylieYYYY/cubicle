@@ -1,8 +1,10 @@
 //! Additional functionalities for the builtin [ContextualIdentity].
 
+use std::cell::Cell;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
+use std::thread;
 
 use serde::{Deserialize, Serialize};
 
@@ -57,11 +59,11 @@ impl ContainerOwner {
         if container.variant.allows_suffix_match() {
             for suffix in container.suffixes.iter() {
                 self.suffix_id_map
-                    .insert(suffix.clone(), (**container.handle()).clone());
+                    .insert(suffix.clone(), container.handle().cookie_store_id().clone());
             }
         }
         self.id_container_map
-            .insert((**container.handle()).clone(), container);
+            .insert(container.handle().cookie_store_id().clone(), container);
     }
 
     /// Gets an owned container immutably,
@@ -173,10 +175,59 @@ pub struct ContainerMatch<'a> {
     pub suffix: Suffix,
 }
 
+/// Container handle that panics if it is dropped without being marked as finished.
+#[derive(Deserialize, Serialize)]
+#[serde(transparent)]
+pub struct ContainerHandle {
+    inner: Arc<CookieStoreId>,
+    #[serde(skip, default)]
+    finished: Cell<bool>,
+}
+
+impl ContainerHandle {
+    /// Marks the handle and allows it to be dropped.
+    pub fn finish(&self) {
+        self.finished.replace(true);
+    }
+
+    /// Gets the underlying [CookieStoreId],
+    /// this disallows others to create a legitimate handle themselves.
+    pub fn cookie_store_id(&self) -> &CookieStoreId {
+        &self.inner
+    }
+}
+
+impl Clone for ContainerHandle {
+    /// Cloning this handle will mark the new handle as unfinished.
+    fn clone(&self) -> Self {
+        Self {
+            inner: Arc::clone(&self.inner),
+            finished: Cell::new(false),
+        }
+    }
+}
+
+impl From<CookieStoreId> for ContainerHandle {
+    fn from(value: CookieStoreId) -> Self {
+        Self {
+            inner: Arc::new(value),
+            finished: Cell::new(false),
+        }
+    }
+}
+
+impl Drop for ContainerHandle {
+    fn drop(&mut self) {
+        if !thread::panicking() && !self.finished.get() {
+            panic!("container handle dropped without finishing");
+        }
+    }
+}
+
 /// Wrapper around [ContextualIdentity] with handle.
 #[derive(Deserialize, Serialize)]
 pub struct Container {
-    handle: Arc<CookieStoreId>,
+    handle: ContainerHandle,
     identity: ContextualIdentity,
     pub variant: ContainerVariant,
     pub suffixes: BTreeSet<Suffix>,
@@ -190,7 +241,7 @@ impl Container {
         suffixes: BTreeSet<Suffix>,
     ) -> Result<Self, CustomError> {
         let identity = ContextualIdentity::create(details).await?;
-        let handle = Arc::new(identity.cookie_store_id().clone());
+        let handle = ContainerHandle::from(identity.cookie_store_id().clone());
         Ok(Self {
             handle,
             identity,
@@ -206,7 +257,9 @@ impl Container {
 
     /// Deletes this container, fails if the browser indicates so.
     pub async fn delete(&self) -> Result<(), CustomError> {
-        self.identity.cookie_store_id().delete_identity().await
+        self.identity.cookie_store_id().delete_identity().await?;
+        self.handle.finish();
+        Ok(())
     }
 
     /// Deletes this container if there is no external handle holder.
@@ -214,7 +267,7 @@ impl Container {
     /// Returns whether this instance is deleted.
     /// Fails if the browser indicates so.
     pub async fn delete_if_empty(&mut self) -> Result<bool, CustomError> {
-        match Arc::get_mut(&mut self.handle) {
+        match Arc::get_mut(&mut self.handle.inner) {
             Some(_cookie_store_id) => self.delete().await.and(Ok(true)),
             None => Ok(false),
         }
@@ -223,7 +276,7 @@ impl Container {
     /// Handle to this container, the holder must clean up the container
     /// appropriately after releasing the handle.
     /// For example, by using [Container::delete_if_empty].
-    pub fn handle(&self) -> &Arc<CookieStoreId> {
+    pub fn handle(&self) -> &ContainerHandle {
         &self.handle
     }
 }
@@ -240,7 +293,7 @@ impl From<ContextualIdentity> for Container {
     /// with no suffixes. This matches the builtin behaviour.
     fn from(identity: ContextualIdentity) -> Self {
         Self {
-            handle: Arc::new(identity.cookie_store_id().clone()),
+            handle: ContainerHandle::from(identity.cookie_store_id().clone()),
             identity,
             variant: ContainerVariant::Permanent,
             suffixes: BTreeSet::default(),
@@ -364,11 +417,12 @@ pub mod test {
         let container =
             test_container(IdentityDetails::default(), BTreeSet::default(), |_| ()).await;
 
-        assert_eq!(1usize, Arc::strong_count(container.handle()));
+        assert_eq!(1usize, Arc::strong_count(&container.handle().inner));
         assert_eq!(
             CookieStoreId::new(String::from("mock_id")),
-            **container.handle()
+            *container.handle().cookie_store_id()
         );
+        container.handle().finish();
         Ok(())
     }
 }

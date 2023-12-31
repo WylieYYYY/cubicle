@@ -57,7 +57,7 @@ impl ContainerAction {
                             .get_mut(cookie_store_id.clone())
                             .expect("valid ID passed from message");
                         container.update(details).await?;
-                        (**container.handle()).clone()
+                        container.handle().cookie_store_id().clone()
                     }
                     None => {
                         let variant = if should_record {
@@ -67,7 +67,7 @@ impl ContainerAction {
                         };
                         let container =
                             Container::create(details, variant, BTreeSet::default()).await?;
-                        let cookie_store_id = (**container.handle()).clone();
+                        let cookie_store_id = container.handle().cookie_store_id().clone();
                         global_context.containers.insert(container);
                         cookie_store_id
                     }
@@ -126,7 +126,7 @@ impl ContainerAction {
                 container.delete().await?;
                 global_context.containers.remove(&cookie_store_id);
 
-                let new_cookie_store_id = (**new_container.handle()).clone();
+                let new_cookie_store_id = new_container.handle().cookie_store_id().clone();
                 global_context.containers.insert(new_container);
                 Ok(new_cookie_store_id)
             }

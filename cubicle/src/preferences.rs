@@ -1,12 +1,11 @@
 //! All preferences that are not container or storage item specific.
 
 use std::collections::BTreeSet;
-use std::sync::Arc;
 
 use derivative::Derivative;
 use serde::{Deserialize, Serialize};
 
-use crate::container::{Container, ContainerVariant};
+use crate::container::{Container, ContainerHandle, ContainerVariant};
 use crate::context::GlobalContext;
 use crate::domain::suffix::{Suffix, SuffixType};
 use crate::domain::EncodedDomain;
@@ -49,9 +48,9 @@ impl ContainerAssignStrategy {
         &self,
         global_context: &mut GlobalContext,
         domain: EncodedDomain,
-    ) -> Result<Arc<CookieStoreId>, CustomError> {
+    ) -> Result<ContainerHandle, CustomError> {
         if let Some(container_match) = global_context.containers.match_container(domain.clone()) {
-            return Ok(Arc::clone(container_match.container.handle()));
+            return Ok(container_match.container.handle().clone());
         }
         let domain = (*self == ContainerAssignStrategy::SuffixedTemporary).then_some(domain);
         new_temporary_container(global_context, domain).await
@@ -89,16 +88,29 @@ impl ContainerEjectStrategy {
         domain: EncodedDomain,
         cookie_store_id: &CookieStoreId,
         assign_strategy: ContainerAssignStrategy,
-    ) -> Result<Arc<CookieStoreId>, CustomError> {
+    ) -> Result<ContainerHandle, CustomError> {
+        let assign_result = assign_strategy
+            .match_container(global_context, domain)
+            .await?;
         use ContainerEjectStrategy::*;
         match *self {
-            IsolatedTemporary => new_temporary_container(global_context, None).await,
-            RemainInPlace => Self::eject_remain_in_place(global_context, cookie_store_id).await,
-            Reassignment => {
-                assign_strategy
-                    .match_container(global_context, domain)
-                    .await
+            IsolatedTemporary => {
+                if *assign_result.cookie_store_id() != *cookie_store_id {
+                    assign_result.finish();
+                    new_temporary_container(global_context, None).await
+                } else {
+                    Ok(assign_result)
+                }
             }
+            RemainInPlace => {
+                if *assign_result.cookie_store_id() != *cookie_store_id {
+                    assign_result.finish();
+                    Self::eject_remain_in_place(global_context, cookie_store_id).await
+                } else {
+                    Ok(assign_result)
+                }
+            }
+            Reassignment => Ok(assign_result),
         }
     }
 
@@ -109,9 +121,9 @@ impl ContainerEjectStrategy {
     async fn eject_remain_in_place(
         global_context: &mut GlobalContext,
         cookie_store_id: &CookieStoreId,
-    ) -> Result<Arc<CookieStoreId>, CustomError> {
+    ) -> Result<ContainerHandle, CustomError> {
         if let Some(container) = global_context.containers.get(cookie_store_id) {
-            Ok(Arc::clone(container.handle()))
+            Ok(container.handle().clone())
         } else {
             new_temporary_container(global_context, None).await
         }
@@ -126,7 +138,7 @@ impl ContainerEjectStrategy {
 async fn new_temporary_container(
     global_context: &mut GlobalContext,
     domain: Option<EncodedDomain>,
-) -> Result<Arc<CookieStoreId>, CustomError> {
+) -> Result<ContainerHandle, CustomError> {
     let mut details = IdentityDetails {
         name: String::from("Temporary Container "),
         ..Default::default()
@@ -142,8 +154,8 @@ async fn new_temporary_container(
     }
 
     let container = Container::create(details, ContainerVariant::Temporary, suffixes).await?;
-    let container_handle = Arc::clone(container.handle());
-    storage::store_single_entry(&container_handle, &container).await?;
+    let container_handle = container.handle().clone();
+    storage::store_single_entry(container_handle.cookie_store_id(), &container).await?;
     global_context.containers.insert(container);
     Ok(container_handle)
 }

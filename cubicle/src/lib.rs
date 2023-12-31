@@ -130,7 +130,8 @@ pub async fn on_tab_removed(tab_id: isize) {
     let Some(tab_det) = MANAGED_TABS.lock().await.unregister(&tab_id) else {
         return;
     };
-    let cookie_store_id = (*tab_det.container_handle).clone();
+    let cookie_store_id = tab_det.container_handle.cookie_store_id().clone();
+    tab_det.container_handle.finish();
     drop(tab_det);
     let mut global_context = GLOBAL_CONTEXT.lock().await;
     drop(ContainerVariant::on_handle_drop(&mut global_context.containers, cookie_store_id).await);
@@ -145,8 +146,10 @@ async fn assign_tab(
     tab_det: TabDeterminant,
     should_revert_old_tab: bool,
 ) -> Result<(), CustomError> {
-    if *tab_det.container_handle == tab_properties.cookie_store_id {
-        MANAGED_TABS.lock().await.register(tab_id.clone(), tab_det);
+    if *tab_det.container_handle.cookie_store_id() == tab_properties.cookie_store_id {
+        if let Some(old_det) = MANAGED_TABS.lock().await.register(tab_id.clone(), tab_det) {
+            old_det.container_handle.finish();
+        }
         tab_id.reload_tab().await
     } else {
         if should_revert_old_tab {
@@ -156,9 +159,11 @@ async fn assign_tab(
             tab_id.close_tab().await?;
         }
 
-        tab_properties.cookie_store_id = (*tab_det.container_handle).clone();
+        tab_properties.cookie_store_id = tab_det.container_handle.cookie_store_id().clone();
         let new_tab_id = tab_properties.new_tab().await?;
-        MANAGED_TABS.lock().await.register(new_tab_id, tab_det);
+        if let Some(old_det) = MANAGED_TABS.lock().await.register(new_tab_id, tab_det) {
+            old_det.container_handle.finish();
+        }
         Ok(())
     }
 }

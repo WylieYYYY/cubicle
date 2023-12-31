@@ -128,9 +128,10 @@ async fn fetch_all_containers(
             .filter_map(|container| {
                 use ContainerVariant::*;
                 match container.variant {
-                    Permanent | Recording { .. } => {
-                        Some(((**container.handle()).clone(), container.identity_details()))
-                    }
+                    Permanent | Recording { .. } => Some((
+                        container.handle().cookie_store_id().clone(),
+                        container.identity_details(),
+                    )),
                     Temporary => None,
                 }
             })

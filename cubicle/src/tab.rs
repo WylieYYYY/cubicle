@@ -1,8 +1,8 @@
 //! Structures that allow checking if a tab may need to be relocated.
 
 use std::collections::HashMap;
-use std::sync::Arc;
 
+use crate::container::ContainerHandle;
 use crate::domain::EncodedDomain;
 use crate::interop::contextual_identities::CookieStoreId;
 use crate::interop::tabs::{TabId, TabProperties};
@@ -11,7 +11,7 @@ use crate::interop::tabs::{TabId, TabProperties};
 /// Contains all detail that are used to determine if the tab does not require
 /// relocation for certain.
 pub struct TabDeterminant {
-    pub container_handle: Arc<CookieStoreId>,
+    pub container_handle: ContainerHandle,
     pub domain: Option<EncodedDomain>,
 }
 
@@ -47,12 +47,14 @@ impl ManagedTabs {
         let opener_det = tab_properties
             .opener_tab_id()
             .and_then(|tab_id| self.determinant_map.get(tab_id));
-        let opener_handle = opener_det.map(|tab_det| Arc::clone(&tab_det.container_handle));
         let opener_domain = opener_det.and_then(|tab_det| tab_det.domain.clone());
 
         let same_domain_as_opener = opener_domain.as_ref() == Some(&new_domain);
+        let mut opener_handle = opener_det
+            .filter(|_| same_domain_as_opener)
+            .map(|tab_det| tab_det.container_handle.clone());
 
-        let current_cookie_store_id = (*self
+        let current_cookie_store_id = self
             .determinant_map
             .entry(tab_id)
             .and_modify(|old_det| {
@@ -63,14 +65,20 @@ impl ManagedTabs {
                     old_det.domain = new_domain;
                 }
             })
-            .or_insert(TabDeterminant {
-                container_handle: opener_handle
-                    .filter(|_| same_domain_as_opener)
-                    .unwrap_or_else(|| Arc::new(tab_properties.cookie_store_id.clone())),
+            .or_insert_with(|| TabDeterminant {
+                container_handle: opener_handle.take().unwrap_or_else(|| {
+                    let handle = ContainerHandle::from(tab_properties.cookie_store_id.clone());
+                    handle.finish();
+                    handle
+                }),
                 domain: Some(new_domain.clone()),
             })
-            .container_handle)
+            .container_handle
+            .cookie_store_id()
             .clone();
+        if let Some(opener_handle) = opener_handle {
+            opener_handle.finish();
+        }
 
         (!same_domain && !same_domain_as_opener).then_some(RelocationDetail {
             new_domain,
@@ -88,8 +96,8 @@ impl ManagedTabs {
     }
 
     /// Registers a tab for quick relocation lookup later.
-    pub fn register(&mut self, tab_id: TabId, tab_det: TabDeterminant) {
-        self.determinant_map.insert(tab_id, tab_det);
+    pub fn register(&mut self, tab_id: TabId, tab_det: TabDeterminant) -> Option<TabDeterminant> {
+        self.determinant_map.insert(tab_id, tab_det)
     }
 
     /// Unregisters a tab to avoid possible collision.

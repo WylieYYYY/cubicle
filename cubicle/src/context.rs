@@ -58,7 +58,7 @@ impl GlobalContext {
             .containers
             .iter()
             .filter(|container| container.variant == ContainerVariant::Temporary)
-            .map(|container| (**container.handle()).clone())
+            .map(|container| container.handle().cookie_store_id().clone())
             .collect::<Vec<CookieStoreId>>();
         for cookie_store_id in &temp_handles {
             if let Some(container) = self.containers.remove(cookie_store_id) {
