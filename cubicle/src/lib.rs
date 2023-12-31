@@ -71,14 +71,14 @@ pub async fn on_tab_updated(tab_id: isize, tab_properties: JsValue) -> Result<()
         let tab_id = TabId::new(tab_id);
         let tab_properties = interop::cast_or_standard_mismatch::<TabProperties>(tab_properties)?;
 
-        let mut managed_tabs = MANAGED_TABS.lock().await;
-        let Some(relocation_detail) =
-            managed_tabs.check_relocation(tab_id.clone(), &tab_properties)
+        let Some(relocation_detail) = MANAGED_TABS
+            .lock()
+            .await
+            .check_relocation(tab_id.clone(), &tab_properties)
         else {
             return Ok(());
         };
         drop(tab_id.stop_loading().await);
-        drop(managed_tabs);
 
         let mut global_context = GLOBAL_CONTEXT.lock().await;
 
@@ -114,7 +114,7 @@ pub async fn on_tab_updated(tab_id: isize, tab_properties: JsValue) -> Result<()
 
         let tab_det = TabDeterminant {
             container_handle,
-            domain: relocation_detail.new_domain,
+            domain: Some(relocation_detail.new_domain),
         };
         assign_tab(tab_id, tab_properties, tab_det, should_revert_old_tab).await
     }
@@ -150,7 +150,7 @@ async fn assign_tab(
         tab_id.reload_tab().await
     } else {
         if should_revert_old_tab {
-            MANAGED_TABS.lock().await.unregister(&tab_id);
+            MANAGED_TABS.lock().await.invalidate_domain(&tab_id);
             tab_id.back_or_close().await?;
         } else {
             tab_id.close_tab().await?;

@@ -12,7 +12,7 @@ use crate::interop::tabs::{TabId, TabProperties};
 /// relocation for certain.
 pub struct TabDeterminant {
     pub container_handle: Arc<CookieStoreId>,
-    pub domain: EncodedDomain,
+    pub domain: Option<EncodedDomain>,
 }
 
 /// Detail required for determining where the tab should be relocated to.
@@ -44,32 +44,47 @@ impl ManagedTabs {
         let new_domain = tab_properties.domain().ok()??;
         let mut same_domain = false;
 
-        let opener_domain = tab_properties
+        let opener_det = tab_properties
             .opener_tab_id()
-            .and_then(|tab_id| self.determinant_map.get(tab_id))
-            .map(|tab_det| tab_det.domain.clone());
+            .and_then(|tab_id| self.determinant_map.get(tab_id));
+        let opener_handle = opener_det.map(|tab_det| Arc::clone(&tab_det.container_handle));
+        let opener_domain = opener_det.and_then(|tab_det| tab_det.domain.clone());
+
+        let same_domain_as_opener = opener_domain.as_ref() == Some(&new_domain);
+
         let current_cookie_store_id = (*self
             .determinant_map
             .entry(tab_id)
             .and_modify(|old_det| {
+                let new_domain = Some(new_domain.clone());
                 if old_det.domain == new_domain {
                     same_domain = true;
                 } else {
-                    old_det.domain = new_domain.clone();
+                    old_det.domain = new_domain;
                 }
             })
             .or_insert(TabDeterminant {
-                container_handle: Arc::new(tab_properties.cookie_store_id.clone()),
-                domain: new_domain.clone(),
+                container_handle: opener_handle
+                    .filter(|_| same_domain_as_opener)
+                    .unwrap_or_else(|| Arc::new(tab_properties.cookie_store_id.clone())),
+                domain: Some(new_domain.clone()),
             })
             .container_handle)
             .clone();
 
-        (!same_domain && opener_domain.as_ref() != Some(&new_domain)).then_some(RelocationDetail {
+        (!same_domain && !same_domain_as_opener).then_some(RelocationDetail {
             new_domain,
             current_cookie_store_id,
             opener_is_managed: opener_domain.is_some(),
         })
+    }
+
+    /// Invalidates the domain stored and forces an extended check.
+    /// Does nothing if the tab specified is not managed.
+    pub fn invalidate_domain(&mut self, tab_id: &TabId) {
+        if let Some(tab_det) = self.determinant_map.get_mut(tab_id) {
+            tab_det.domain = None;
+        }
     }
 
     /// Registers a tab for quick relocation lookup later.
