@@ -89,28 +89,21 @@ impl ContainerEjectStrategy {
         cookie_store_id: &CookieStoreId,
         assign_strategy: ContainerAssignStrategy,
     ) -> Result<ContainerHandle, CustomError> {
-        let assign_result = assign_strategy
-            .match_container(global_context, domain)
-            .await?;
+        if let Some(container_match) = global_context.containers.match_container(domain.clone()) {
+            if container_match.container.handle().cookie_store_id() == cookie_store_id {
+                return Ok(container_match.container.handle().clone());
+            }
+        }
+
         use ContainerEjectStrategy::*;
         match *self {
-            IsolatedTemporary => {
-                if *assign_result.cookie_store_id() != *cookie_store_id {
-                    assign_result.finish();
-                    new_temporary_container(global_context, None).await
-                } else {
-                    Ok(assign_result)
-                }
+            IsolatedTemporary => new_temporary_container(global_context, None).await,
+            RemainInPlace => Self::eject_remain_in_place(global_context, cookie_store_id).await,
+            Reassignment => {
+                assign_strategy
+                    .match_container(global_context, domain)
+                    .await
             }
-            RemainInPlace => {
-                if *assign_result.cookie_store_id() != *cookie_store_id {
-                    assign_result.finish();
-                    Self::eject_remain_in_place(global_context, cookie_store_id).await
-                } else {
-                    Ok(assign_result)
-                }
-            }
-            Reassignment => Ok(assign_result),
         }
     }
 
