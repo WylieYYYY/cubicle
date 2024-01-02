@@ -1,6 +1,7 @@
 //! Structures that allow checking if a tab may need to be relocated.
 
 use std::collections::HashMap;
+use std::mem;
 
 use crate::container::ContainerHandle;
 use crate::domain::EncodedDomain;
@@ -18,6 +19,7 @@ pub struct TabDeterminant {
 /// Detail required for determining where the tab should be relocated to.
 /// When wrapped in [Option], it indicates whether relocation should occur.
 pub struct RelocationDetail {
+    pub old_domain: Option<EncodedDomain>,
     pub new_domain: EncodedDomain,
     pub current_cookie_store_id: CookieStoreId,
     pub opener_is_managed: bool,
@@ -42,6 +44,7 @@ impl ManagedTabs {
         tab_properties: &TabProperties,
     ) -> Option<RelocationDetail> {
         let new_domain = tab_properties.domain().ok()??;
+        let mut old_domain = None;
         let mut same_domain = false;
 
         let opener_det = tab_properties
@@ -59,10 +62,9 @@ impl ManagedTabs {
             .entry(tab_id)
             .and_modify(|old_det| {
                 let new_domain = Some(new_domain.clone());
-                if old_det.domain == new_domain {
-                    same_domain = true;
-                } else {
-                    old_det.domain = new_domain;
+                same_domain = old_det.domain == new_domain;
+                if !same_domain {
+                    old_domain = mem::replace(&mut old_det.domain, new_domain);
                 }
             })
             .or_insert_with(|| TabDeterminant {
@@ -81,23 +83,21 @@ impl ManagedTabs {
         }
 
         (!same_domain && !same_domain_as_opener).then_some(RelocationDetail {
+            old_domain,
             new_domain,
             current_cookie_store_id,
             opener_is_managed: opener_domain.is_some(),
         })
     }
 
-    /// Invalidates the domain stored and forces an extended check.
-    /// Does nothing if the tab specified is not managed.
-    pub fn invalidate_domain(&mut self, tab_id: &TabId) {
-        if let Some(tab_det) = self.determinant_map.get_mut(tab_id) {
-            tab_det.domain = None;
-        }
-    }
-
     /// Registers a tab for quick relocation lookup later.
     pub fn register(&mut self, tab_id: TabId, tab_det: TabDeterminant) -> Option<TabDeterminant> {
         self.determinant_map.insert(tab_id, tab_det)
+    }
+
+    /// Gets a mutable reference to [TabDeterminant] for modifying, [None] if it does not exist.
+    pub fn get_mut(&mut self, tab_id: &TabId) -> Option<&mut TabDeterminant> {
+        self.determinant_map.get_mut(tab_id)
     }
 
     /// Unregisters a tab to avoid possible collision.

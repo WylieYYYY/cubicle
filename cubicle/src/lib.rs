@@ -22,11 +22,11 @@ use js_sys::JsString;
 use once_cell::sync::Lazy;
 use wasm_bindgen::prelude::*;
 
-use crate::container::ContainerVariant;
+use crate::container::{ContainerHandle, ContainerVariant};
 use crate::context::GlobalContext;
 use crate::interop::tabs::{TabId, TabProperties};
 use crate::message::Message;
-use crate::tab::{ManagedTabs, TabDeterminant};
+use crate::tab::{ManagedTabs, RelocationDetail, TabDeterminant};
 use crate::util::errors::CustomError;
 
 /// Entry point for loading this extension.
@@ -112,11 +112,14 @@ pub async fn on_tab_updated(tab_id: isize, tab_properties: JsValue) -> Result<()
         };
         drop(global_context);
 
-        let tab_det = TabDeterminant {
+        assign_tab(
+            tab_id,
+            tab_properties,
             container_handle,
-            domain: Some(relocation_detail.new_domain),
-        };
-        assign_tab(tab_id, tab_properties, tab_det, should_revert_old_tab).await
+            relocation_detail,
+            should_revert_old_tab,
+        )
+        .await
     }
     .map_err(|error: CustomError| JsError::new(&error.to_string()))
 }
@@ -137,15 +140,19 @@ pub async fn on_tab_removed(tab_id: isize) {
     drop(ContainerVariant::on_handle_drop(&mut global_context.containers, cookie_store_id).await);
 }
 
-/// Switchs the tab to a [Container](crate::container::Container)
-/// specified by the [TabDeterminant].
+/// Switchs the tab to a [Container](crate::container::Container).
 /// Fails if any tab operation failed.
 async fn assign_tab(
     tab_id: TabId,
     mut tab_properties: TabProperties,
-    tab_det: TabDeterminant,
+    container_handle: ContainerHandle,
+    relocation_detail: RelocationDetail,
     should_revert_old_tab: bool,
 ) -> Result<(), CustomError> {
+    let tab_det = TabDeterminant {
+        container_handle,
+        domain: Some(relocation_detail.new_domain),
+    };
     if *tab_det.container_handle.cookie_store_id() == tab_properties.cookie_store_id {
         if let Some(old_det) = MANAGED_TABS.lock().await.register(tab_id.clone(), tab_det) {
             old_det.container_handle.finish();
@@ -153,7 +160,9 @@ async fn assign_tab(
         tab_id.reload_tab().await
     } else {
         if should_revert_old_tab {
-            MANAGED_TABS.lock().await.invalidate_domain(&tab_id);
+            if let Some(old_det) = MANAGED_TABS.lock().await.get_mut(&tab_id) {
+                old_det.domain = relocation_detail.old_domain;
+            }
             tab_id.back_or_close().await?;
         } else {
             tab_id.close_tab().await?;
