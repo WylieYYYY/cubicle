@@ -159,6 +159,13 @@ async fn assign_tab(
         }
         tab_id.reload_tab().await
     } else {
+        tab_properties.cookie_store_id = tab_det.container_handle.cookie_store_id().clone();
+        let new_tab_id = tab_properties.new_tab().await?;
+
+        if let Some(reused_det) = MANAGED_TABS.lock().await.register(new_tab_id, tab_det) {
+            reused_det.container_handle.finish();
+        }
+
         if should_revert_old_tab {
             if let Some(old_det) = MANAGED_TABS.lock().await.get_mut(&tab_id) {
                 old_det.domain = relocation_detail.old_domain;
@@ -168,11 +175,6 @@ async fn assign_tab(
             tab_id.close_tab().await?;
         }
 
-        tab_properties.cookie_store_id = tab_det.container_handle.cookie_store_id().clone();
-        let new_tab_id = tab_properties.new_tab().await?;
-        if let Some(old_det) = MANAGED_TABS.lock().await.register(new_tab_id, tab_det) {
-            old_det.container_handle.finish();
-        }
         Ok(())
     }
 }
