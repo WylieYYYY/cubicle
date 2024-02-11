@@ -18,7 +18,9 @@ use crate::util::errors::CustomError;
 pub struct GlobalContext {
     #[serde(flatten)]
     pub containers: ContainerOwner,
+    #[serde(default)]
     pub psl: Psl,
+    #[serde(default)]
     pub preferences: Preferences,
 }
 
@@ -44,6 +46,12 @@ impl GlobalContext {
             Reflect::delete_property(&all_stored, &JsString::from("version"))
                 .expect("constructed object from get all function");
             context = interop::cast_or_standard_mismatch(JsValue::from(all_stored))?;
+
+            if context.psl.is_empty() {
+                Message::PslUpdate { url: None }
+                    .act(&mut &mut context)
+                    .await?;
+            }
 
             context.purge_temporary_containers().await?;
             Ok(context)

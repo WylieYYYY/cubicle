@@ -67,7 +67,9 @@ impl Message {
                 migrate_type,
                 detect_temp,
             } => {
-                global_context.containers = migrate_type.act(detect_temp).await?;
+                global_context
+                    .containers
+                    .merge(migrate_type.act(detect_temp).await?);
                 storage::set_with_serde_keys(&global_context.containers).await?;
                 View::FetchAllContainers {
                     selected: Some(tabs::current_tab_cookie_store_id().await?),

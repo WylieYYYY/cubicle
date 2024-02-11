@@ -85,12 +85,25 @@ impl ContainerOwner {
         }
     }
 
+    /// Merges another owner with the current instance.
+    /// Overlapping containers and suffixes will be overriden.
+    pub fn merge(&mut self, other: Self) {
+        for container in other.id_container_map.into_values() {
+            if let Some(removed_container) = self.remove(container.handle().cookie_store_id()) {
+                removed_container.handle().finish();
+            }
+            self.insert(container);
+        }
+    }
+
     /// Remove an owned container.
     /// Returns the popped container, or [None] if not found.
     pub fn remove(&mut self, cookie_store_id: &CookieStoreId) -> Option<Container> {
         let container = self.id_container_map.remove(cookie_store_id);
-        self.suffix_id_map
-            .retain(|_suffix, id| *id != *cookie_store_id);
+        if container.is_some() {
+            self.suffix_id_map
+                .retain(|_suffix, id| *id != *cookie_store_id);
+        }
         container
     }
 
