@@ -76,7 +76,7 @@ impl IdentityColor {
     /// the cycle is shared globally.
     pub fn new_rolling_color() -> Self {
         static COLOR_INDEX: AtomicUsize = AtomicUsize::new(0);
-        let new_index = COLOR_INDEX.fetch_add(1, Ordering::Relaxed) % (Self::COUNT - 2);
+        let new_index = COLOR_INDEX.fetch_add(1, Ordering::Relaxed) % (Self::COUNT - 3);
         Self::from_repr(new_index).expect("controlled representation input range")
     }
 }
@@ -128,7 +128,7 @@ pub mod test {
     #[wasm_bindgen_test]
     fn test_rolling_color() {
         let initial_color = IdentityColor::new_rolling_color();
-        for _ in 1..(IdentityColor::COUNT - 2) {
+        for _ in 1..(IdentityColor::COUNT - 3) {
             assert_ne!(initial_color, IdentityColor::new_rolling_color());
         }
         assert_eq!(initial_color, IdentityColor::new_rolling_color());

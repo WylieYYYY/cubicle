@@ -1,5 +1,7 @@
 //! Data that are persisted to the storage with version control.
 
+use std::mem;
+
 use js_sys::{JsString, Reflect};
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::JsValue;
@@ -54,6 +56,8 @@ impl GlobalContext {
             }
 
             context.purge_temporary_containers().await?;
+            let uncached_containers = mem::take(&mut context.containers);
+            context.containers.merge(uncached_containers);
             Ok(context)
         }
     }
