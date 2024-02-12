@@ -6,11 +6,15 @@ pub mod suffix;
 
 use std::cmp::Ordering;
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
+
+use crate::util::SingleStringVisitor;
 
 /// Domain that can be encoded as an international domain name.
-#[derive(Clone, Debug, Deserialize, Eq, Serialize)]
+#[derive(Clone, Debug, Eq, Serialize)]
+#[serde(transparent)]
 pub struct EncodedDomain {
+    #[serde(skip_serializing)]
     encoded: String,
     raw: String,
 }
@@ -53,6 +57,20 @@ impl EncodedDomain {
     /// for ordering and searching.
     pub fn reverse(&self) -> impl Iterator<Item = &str> {
         self.encoded.split('.').rev()
+    }
+}
+
+impl<'de> Deserialize<'de> for EncodedDomain {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        use serde::de::{Error, Unexpected};
+        let raw_domain = deserializer.deserialize_string(SingleStringVisitor)?;
+        Self::try_from(&*raw_domain).or(Err(Error::invalid_value(
+            Unexpected::Str(&raw_domain),
+            &"an encodable domain",
+        )))
     }
 }
 

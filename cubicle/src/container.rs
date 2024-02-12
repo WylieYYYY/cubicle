@@ -264,6 +264,7 @@ impl Container {
     }
 
     /// Updates this container using the given [IdentityDetails].
+    /// Fails if the browser indicates so.
     pub async fn update(&mut self, details: IdentityDetails) -> Result<(), CustomError> {
         self.identity.update(details).await.and(Ok(()))
     }

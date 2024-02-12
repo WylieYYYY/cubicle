@@ -78,6 +78,7 @@ impl ContextualIdentity {
 
     /// Updates the identity and the details stored
     /// using the given [IdentityDetails].
+    /// Fails if the browser indicates so.
     pub async fn update(&mut self, details: IdentityDetails) -> Result<(), CustomError> {
         *self = self.cookie_store_id.update_identity(details).await?;
         Ok(())

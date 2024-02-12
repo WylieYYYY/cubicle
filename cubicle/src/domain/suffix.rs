@@ -71,6 +71,7 @@ where
 /// The ordering is organized similarly as the
 /// published suffix list for quick searching.
 #[derive(Clone, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(expecting = "a suffix", into = "String", try_from = "String")]
 pub struct Suffix {
     suffix_type: SuffixType,
     domain: EncodedDomain,
@@ -122,6 +123,19 @@ impl Suffix {
     /// May be replaced by an `is_exclusion` function.
     pub fn suffix_type(&self) -> &SuffixType {
         &self.suffix_type
+    }
+}
+
+impl From<Suffix> for String {
+    fn from(value: Suffix) -> Self {
+        String::from(value.suffix_type.prefix()) + value.domain.raw()
+    }
+}
+
+impl TryFrom<String> for Suffix {
+    type Error = CustomError;
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        Self::try_from(&*value)
     }
 }
 
