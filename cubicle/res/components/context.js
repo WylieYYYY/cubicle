@@ -86,14 +86,16 @@ export default async function redirect(viewEnum) {
  */
 export async function stateUpdateRedirect(messageType, messageEnum) {
   const mainElement = document.getElementsByTagName('main')[0];
-  mainElement.replaceChildren();
+  mainElement.style.display = 'none';
   const selectContainer = document.getElementById('select-container');
   selectContainer.disabled = true;
   const message = {message_type: messageType, ...messageEnum};
   return browser.runtime.sendMessage(message).then((html) => {
     selectContainer.innerHTML = html;
-    selectContainer.disabled = false;
     messageContainerSelection(selectContainer.value);
+  }).finally(() => {
+    selectContainer.disabled = false;
+    mainElement.style.display = 'flex';
   });
 }
 

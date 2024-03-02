@@ -50,7 +50,11 @@ function messageUpdateSuffix(encodedOldSuffix, newSuffix) {
       old_suffix: encodedOldSuffix,
       new_suffix: newSuffix,
     },
-  }).then(logStatus(`Suffix '${newSuffix}' was added`));
+  }).then(() => {
+    if (newSuffix === '') {
+      logStatus(`Suffix '${encodedOldSuffix}' was removed`)();
+    } else logStatus(`Suffix '${newSuffix}' was added`)();
+  }).catch(logStatus(`Suffix '${newSuffix}' is invalid`));
 }
 
 /**
