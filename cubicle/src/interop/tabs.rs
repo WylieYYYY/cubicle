@@ -110,12 +110,15 @@ impl TabId {
             "code",
             "window.history.back(); window.close();",
         )]));
-        JsFuture::from(tab_execute_js(self.inner, details))
-            .await
-            .or(Err(CustomError::FailedTabOperation {
-                verb: String::from("revert"),
-            }))?;
-        Ok(())
+        match JsFuture::from(tab_execute_js(self.inner, details)).await {
+            Ok(_) => Ok(()),
+            Err(_) => self
+                .close_tab()
+                .await
+                .or(Err(CustomError::FailedTabOperation {
+                    verb: String::from("revert"),
+                })),
+        }
     }
 
     /// Stops the specified tab from loading, fails if the browser indicates so.

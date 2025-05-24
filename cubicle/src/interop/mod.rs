@@ -11,7 +11,7 @@ pub mod tabs;
 
 use std::any;
 
-use js_sys::{JsString, Object, Promise, Reflect};
+use js_sys::{JsString, Object, Reflect};
 use serde::{Deserialize, Serialize};
 use serde_wasm_bindgen::Serializer;
 use wasm_bindgen::prelude::*;
@@ -20,14 +20,6 @@ use web_sys::Url;
 
 use crate::domain::EncodedDomain;
 use crate::util::errors::CustomError;
-
-#[wasm_bindgen(raw_module = "./background.js")]
-extern "C" {
-    /// Add a runtime listener.
-    /// The closure should be leaked using [Closure::forget] later.
-    #[wasm_bindgen(js_name = "addRuntimeListener")]
-    pub fn add_runtime_listener(event: &str, handler: &Closure<dyn Fn(Box<[JsValue]>) -> Promise>);
-}
 
 #[wasm_bindgen]
 extern "C" {
