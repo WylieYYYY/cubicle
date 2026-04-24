@@ -8,8 +8,8 @@ use async_std::io::prelude::*;
 use chrono::naive::NaiveDate;
 use serde::{Deserialize, Serialize};
 
-use super::suffix::{self, MatchMode, Suffix, SuffixType};
 use super::EncodedDomain;
+use super::suffix::{self, MatchMode, Suffix, SuffixType};
 use crate::util::errors::CustomError;
 
 /// Public suffix list, used for checking if domains are controlled by

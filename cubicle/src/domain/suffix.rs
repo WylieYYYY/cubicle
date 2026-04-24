@@ -9,7 +9,7 @@ use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
 use super::EncodedDomain;
-use crate::util::{errors::CustomError, KeyRangeExt};
+use crate::util::{KeyRangeExt, errors::CustomError};
 
 /// Modes for matching suffixes from different sources,
 /// as they have different expectations on the procedure.
@@ -263,13 +263,15 @@ pub mod test {
             );
             let mut skipped_matches = entry.1.into_iter();
             skipped_matches.next();
-            assert!(match_suffix(
-                &suffix_set,
-                EncodedDomain::tfrom(entry.0),
-                MatchMode::Parent
-            )
-            .map(|suffix_match| suffix_match.1.raw())
-            .eq(skipped_matches));
+            assert!(
+                match_suffix(
+                    &suffix_set,
+                    EncodedDomain::tfrom(entry.0),
+                    MatchMode::Parent
+                )
+                .map(|suffix_match| suffix_match.1.raw())
+                .eq(skipped_matches)
+            );
         }
     }
 
@@ -308,8 +310,10 @@ pub mod test {
 
     #[wasm_bindgen_test]
     fn suffix_sorting() {
-        assert!(test_suffixes()
-            .windows(2)
-            .all(|window| window[0] <= window[1]));
+        assert!(
+            test_suffixes()
+                .windows(2)
+                .all(|window| window[0] <= window[1])
+        );
     }
 }

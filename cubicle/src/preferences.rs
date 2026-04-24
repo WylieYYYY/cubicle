@@ -7,8 +7,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::container::{Container, ContainerHandle, ContainerVariant};
 use crate::context::GlobalContext;
-use crate::domain::suffix::{Suffix, SuffixType};
 use crate::domain::EncodedDomain;
+use crate::domain::suffix::{Suffix, SuffixType};
 use crate::interop::contextual_identities::{CookieStoreId, IdentityDetails};
 use crate::interop::storage;
 use crate::util::errors::CustomError;
@@ -89,10 +89,10 @@ impl ContainerEjectStrategy {
         cookie_store_id: &CookieStoreId,
         assign_strategy: ContainerAssignStrategy,
     ) -> Result<ContainerHandle, CustomError> {
-        if let Some(container_match) = global_context.containers.match_container(domain.clone()) {
-            if container_match.container.handle().cookie_store_id() == cookie_store_id {
-                return Ok(container_match.container.handle().clone());
-            }
+        if let Some(container_match) = global_context.containers.match_container(domain.clone())
+            && container_match.container.handle().cookie_store_id() == cookie_store_id
+        {
+            return Ok(container_match.container.handle().clone());
         }
 
         use ContainerEjectStrategy::*;

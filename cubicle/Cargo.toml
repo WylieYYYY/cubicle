@@ -1,32 +1,32 @@
 [package]
 name = "cubicle"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [lib]
 crate-type = ["cdylib"]
 
 [dependencies]
-async-std = "1.12.0"
-base64 = "0.21.0"
-chrono = { version = "0.4.24", features = ["serde"] }
+async-std = "1.13.2"
+base64 = "0.22.1"
+chrono = { version = "0.4.44", features = ["serde"] }
 console_error_panic_hook = "0.1.7"
 derivative = "2.2.0"
-idna = "0.3.0"
-js-sys = "0.3.65"
-mockall_double = "0.3.0"
-once_cell = "1.17.1"
-serde = { version = "1.0.158", features = ["derive", "rc"] }
-serde-wasm-bindgen = "0.5.0"
-strum = "0.24.1"
-strum_macros = "0.24.1"
-tera = { version = "1.18.1", default-features = false }
-thiserror = "1.0.40"
-wasm-bindgen = "=0.2.89"
-wasm-bindgen-futures = "0.4.34"
+idna = "1.1.0"
+js-sys = "0.3.95"
+mockall_double = "0.3.1"
+once_cell = "1.21.4"
+serde = { version = "1.0.228", features = ["derive", "rc"] }
+serde-wasm-bindgen = "0.6.5"
+strum = "0.28.0"
+strum_macros = "0.28.0"
+tera = { version = "1.20.1", default-features = false }
+thiserror = "2.0.18"
+wasm-bindgen = "=0.2.118"
+wasm-bindgen-futures = "0.4.68"
 
 [dependencies.web-sys]
-version = "0.3.65"
+version = "0.3.95"
 features = [
   "Headers", "Request", "RequestInit", "RequestMode", "Response", "Window",
   "ReadableStream",
@@ -39,11 +39,11 @@ features = [
 
 [build-dependencies]
 fs_extra = "1.3.0"
-tera = { version = "1.18.1", default-features = false }
+tera = { version = "1.20.1", default-features = false }
 
 [dev-dependencies]
-async-std = { version = "1.12.0", features = ["attributes"] }
-indoc = "2.0.3"
-mockall = "0.11.4"
-serde_assert = "0.6.0"
-wasm-bindgen-test = "=0.3.39"
+async-std = { version = "1.13.2", features = ["attributes"] }
+indoc = "2.0.7"
+mockall = "0.14.0"
+serde_assert = "0.8.0"
+wasm-bindgen-test = "=0.3.68"

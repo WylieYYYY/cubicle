@@ -1,8 +1,8 @@
 //! Message for content that can be rendered to a string.
 use std::{iter, ops::DerefMut};
 
-use chrono::offset::Utc;
 use chrono::Duration;
+use chrono::offset::Utc;
 use serde::Deserialize;
 use strum::IntoEnumIterator;
 use strum_macros::Display;

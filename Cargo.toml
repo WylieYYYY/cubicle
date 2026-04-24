@@ -1,2 +1,3 @@
 [workspace]
 members = ["cubicle"]
+resolver = "3"

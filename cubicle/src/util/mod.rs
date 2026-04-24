@@ -117,7 +117,7 @@ pub mod test {
     use std::fmt::Debug;
 
     use serde::Deserializer;
-    use serde_assert::{Deserializer as AssertDeserializer, Token, Tokens};
+    use serde_assert::{Deserializer as AssertDeserializer, Token};
     use wasm_bindgen_test::wasm_bindgen_test;
 
     use super::*;
@@ -152,13 +152,12 @@ pub mod test {
 
     #[wasm_bindgen_test]
     fn test_base64_visitor() {
-        let mut deserializer = AssertDeserializer::builder()
-            .tokens(Tokens(vec![
-                Token::Str(String::from(Base64Visitor::MARKER_PREFIX) + "dGVzdA"),
-                Token::Str(String::from(Base64Visitor::MARKER_PREFIX) + "dGVzdA=="),
-                Token::Str(String::from("dGVzdA")),
-            ]))
-            .build();
+        let mut deserializer = AssertDeserializer::builder([
+            Token::Str(String::from(Base64Visitor::MARKER_PREFIX) + "dGVzdA"),
+            Token::Str(String::from(Base64Visitor::MARKER_PREFIX) + "dGVzdA=="),
+            Token::Str(String::from("dGVzdA")),
+        ])
+        .build();
         assert_eq!(
             Ok(String::from("test")),
             deserializer.deserialize_str(Base64Visitor)
@@ -169,13 +168,12 @@ pub mod test {
 
     #[wasm_bindgen_test]
     fn test_single_string_visitor() {
-        let mut deserializer = AssertDeserializer::builder()
-            .tokens(Tokens(vec![
-                Token::Str(String::from("test")),
-                Token::Str(String::from("test")),
-                Token::Bool(false),
-            ]))
-            .build();
+        let mut deserializer = AssertDeserializer::builder([
+            Token::Str(String::from("test")),
+            Token::Str(String::from("test")),
+            Token::Bool(false),
+        ])
+        .build();
         assert_eq!(
             Ok(String::from("test")),
             deserializer.deserialize_string(SingleStringVisitor)
@@ -184,8 +182,10 @@ pub mod test {
             Ok(String::from("test")),
             deserializer.deserialize_str(SingleStringVisitor)
         );
-        assert!(deserializer
-            .deserialize_string(SingleStringVisitor)
-            .is_err());
+        assert!(
+            deserializer
+                .deserialize_string(SingleStringVisitor)
+                .is_err()
+        );
     }
 }

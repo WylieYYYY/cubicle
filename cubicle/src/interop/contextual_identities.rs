@@ -16,7 +16,7 @@ use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
 
 use crate::interop;
-use crate::util::{errors::CustomError, Base64Visitor, SingleStringVisitor};
+use crate::util::{Base64Visitor, SingleStringVisitor, errors::CustomError};
 
 #[wasm_bindgen]
 extern "C" {

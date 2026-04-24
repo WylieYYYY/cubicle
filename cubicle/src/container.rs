@@ -8,8 +8,8 @@ use std::thread;
 
 use serde::{Deserialize, Serialize};
 
-use crate::domain::suffix::{self, MatchMode, Suffix, SuffixType};
 use crate::domain::EncodedDomain;
+use crate::domain::suffix::{self, MatchMode, Suffix, SuffixType};
 #[mockall_double::double]
 use crate::interop::contextual_identities::ContextualIdentity;
 use crate::interop::contextual_identities::{
@@ -74,7 +74,7 @@ impl ContainerOwner {
 
     /// Gets an owned container mutably, wrapped with an [OwnerHandle].
     /// [None] if the container specified does not exist.
-    pub fn get_mut(&mut self, cookie_store_id: CookieStoreId) -> Option<OwnerHandle> {
+    pub fn get_mut(&mut self, cookie_store_id: CookieStoreId) -> Option<OwnerHandle<'_>> {
         if self.id_container_map.get_mut(&cookie_store_id).is_some() {
             Some(OwnerHandle {
                 owner: self,
@@ -112,7 +112,7 @@ impl ContainerOwner {
     /// Returns a [ContainerMatch], [None] if there is no match.
     /// Glob suffix may not match if the container with the corresponding
     /// normal suffix is removed, this may be fixed in the future.
-    pub fn match_container(&mut self, domain: EncodedDomain) -> Option<ContainerMatch> {
+    pub fn match_container(&mut self, domain: EncodedDomain) -> Option<ContainerMatch<'_>> {
         let matches = suffix::match_suffix(&self.suffix_id_map, domain, MatchMode::Full);
         for (matched_domain, suffix) in matches {
             let cookie_store_id = self.suffix_id_map.get(&suffix).expect("suffix matched");

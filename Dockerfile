@@ -1,14 +1,13 @@
-FROM rust:1.74.1-slim-bookworm
+FROM rust:1.95-slim-trixie
 ARG geckodriver_version=0.33.0
 
 RUN apt-get update && apt-get install --yes pkg-config npm libssl-dev zip wget firefox-esr
 
 WORKDIR /packages/node
-RUN npm init --yes && npm install eslint eslint-config-google
+RUN npm init --yes && npm install @eslint/js eslint globals
 
 WORKDIR /packages/cargo
-RUN cargo install wasm-bindgen-cli@0.2.89
-COPY rust-toolchain.toml ./rust-toolchain.toml
+RUN cargo install wasm-bindgen-cli@0.2.118
 RUN rustup component add clippy rustfmt
 RUN rustup target add wasm32-unknown-unknown
 COPY cubicle/Cargo.toml ./Cargo.toml

@@ -40,7 +40,7 @@ impl EncodedDomain {
         Self::try_from(
             self.encoded
                 .split('.')
-                .last()
+                .next_back()
                 .expect("string split has at least one element"),
         )
         .expect("validity checked from existing instance")
@@ -147,9 +147,11 @@ pub mod test {
 
     #[wasm_bindgen_test]
     fn test_domain_reverse() {
-        assert!(EncodedDomain::tfrom("sub.example.com")
-            .reverse()
-            .eq(["com", "example", "sub"]));
+        assert!(
+            EncodedDomain::tfrom("sub.example.com")
+                .reverse()
+                .eq(["com", "example", "sub"])
+        );
     }
 
     #[wasm_bindgen_test]

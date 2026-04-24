@@ -139,7 +139,7 @@ impl Fetch {
                 state.success = Some(Err(io_error));
             }
             if let Some(waker) = &state.waker {
-                waker.clone().wake()
+                waker.wake_by_ref();
             }
         })
     }
@@ -178,8 +178,8 @@ impl TryFrom<ReadableStream> for Fetch {
     /// Creates an instance using a reader to the stream,
     /// only fails when unexpected value is returned.
     fn try_from(value: ReadableStream) -> Result<Self, Self::Error> {
-        let mut reader_options = ReadableStreamGetReaderOptions::new();
-        reader_options.mode(ReadableStreamReaderMode::Byob);
+        let reader_options = ReadableStreamGetReaderOptions::new();
+        reader_options.set_mode(ReadableStreamReaderMode::Byob);
         let reader = value
             .get_reader_with_options(&reader_options)
             .dyn_into()
@@ -199,8 +199,9 @@ impl TryFrom<ReadableStream> for Fetch {
 /// Gets a response from an URL.
 /// Fails if the URL contains credentials, or if a network error occurs.
 pub async fn get(url: &str) -> Result<Response, CustomError> {
-    let mut connection_options = RequestInit::new();
-    connection_options.method("GET").mode(RequestMode::Cors);
+    let connection_options = RequestInit::new();
+    connection_options.set_method("GET");
+    connection_options.set_mode(RequestMode::Cors);
     let request = Request::new_with_str_and_init(url, &connection_options).or(Err(
         CustomError::FailedFetchRequest {
             message: String::from("credentials in URL not supported"),
