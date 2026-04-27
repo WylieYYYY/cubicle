@@ -17,9 +17,12 @@ use crate::util::errors::CustomError;
 #[derive(Derivative, Deserialize, Serialize)]
 #[derivative(Default)]
 pub struct Preferences {
+    #[serde(default)]
     pub assign_strategy: ContainerAssignStrategy,
+    #[serde(default)]
     pub eject_strategy: ContainerEjectStrategy,
     #[derivative(Default(value = "true"))]
+    #[serde(default)]
     pub should_revert_old_tab: bool,
 }
 

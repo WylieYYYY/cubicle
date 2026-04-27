@@ -4,7 +4,11 @@ ARG geckodriver_version=0.33.0
 RUN apt-get update && apt-get install --yes pkg-config npm libssl-dev zip wget firefox-esr
 
 WORKDIR /packages/node
-RUN npm init --yes && npm install @eslint/js eslint globals
+RUN npm init --yes && npm install \
+    @eslint/js@^9.39.4 \
+    eslint@^9.39.4 \
+    eslint-config-google@git+https://github.com/google/eslint-config-google.git#30e07afe1cc4b105f9228b5c6300be79279503e1 \
+    globals
 
 WORKDIR /packages/cargo
 RUN cargo install wasm-bindgen-cli@0.2.118

@@ -1,28 +1,30 @@
 import js from '@eslint/js';
-import { defineConfig } from 'eslint/config';
+import {defineConfig} from 'eslint/config';
+import googleConfig from 'eslint-config-google';
 import globals from 'globals';
 
 export default defineConfig([
-    {
-        files: ['**/*.js'],
+  {
+    files: ['cubicle/**/*.js'],
 
-        plugins: {
-            js,
-        },
-        extends: [
-            'js/recommended',
-        ],
+    plugins: {
+      js,
+    },
+    extends: [
+      'js/recommended',
+      googleConfig,
+    ],
 
-        languageOptions: {
-            ecmaVersion: 11,
-            sourceType: 'module',
-            globals: {
-                ...globals.browser,
-                ...globals.webextensions,
-            },
-        },
+    languageOptions: {
+      ecmaVersion: 11,
+      sourceType: 'module',
+      globals: {
+        ...globals.browser,
+        ...globals.webextensions,
+      },
     },
-    {
-        ignores: ['cubicle/res/components/context-map.js'],
-    },
-])
+  },
+  {
+    ignores: ['cubicle/res/components/context-map.js'],
+  },
+]);
