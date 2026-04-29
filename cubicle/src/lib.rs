@@ -24,7 +24,9 @@ use wasm_bindgen::prelude::*;
 
 use crate::container::{ContainerHandle, ContainerVariant};
 use crate::context::GlobalContext;
-use crate::interop::tabs::{TabId, TabProperties};
+use crate::interop::tabs::TabId;
+#[mockall_double::double]
+use crate::interop::tabs::TabProperties;
 use crate::message::Message;
 use crate::tab::{ManagedTabs, RelocationDetail, TabDeterminant};
 use crate::util::errors::CustomError;
@@ -153,13 +155,13 @@ async fn assign_tab(
         container_handle,
         domain: Some(relocation_detail.new_domain),
     };
-    if *tab_det.container_handle.cookie_store_id() == tab_properties.cookie_store_id {
+    if tab_det.container_handle.cookie_store_id() == tab_properties.cookie_store_id() {
         if let Some(old_det) = MANAGED_TABS.lock().await.register(tab_id.clone(), tab_det) {
             old_det.container_handle.finish();
         }
         tab_id.reload_tab().await
     } else {
-        tab_properties.cookie_store_id = tab_det.container_handle.cookie_store_id().clone();
+        *tab_properties.cookie_store_id_mut() = tab_det.container_handle.cookie_store_id().clone();
         let new_tab_id = tab_properties.new_tab().await?;
 
         if let Some(reused_det) = MANAGED_TABS.lock().await.register(new_tab_id, tab_det) {

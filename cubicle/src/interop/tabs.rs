@@ -4,7 +4,12 @@
 
 use std::collections::HashMap;
 
+use const_fn::const_fn;
 use js_sys::{Array, Object, Promise};
+#[cfg(test)]
+use mockall::mock;
+#[cfg(test)]
+use serde::Deserializer;
 use serde::{Deserialize, Serialize, Serializer};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
@@ -39,7 +44,7 @@ pub struct TabProperties {
         deserialize_with = "CookieStoreId::deserialize_inner",
         serialize_with = "CookieStoreId::serialize_inner"
     )]
-    pub cookie_store_id: CookieStoreId,
+    cookie_store_id: CookieStoreId,
     discarded: Option<bool>,
     #[serde(skip_serializing)]
     id: isize,
@@ -55,6 +60,16 @@ pub struct TabProperties {
 }
 
 impl TabProperties {
+    /// Gets an immutable reference to [CookieStoreId].
+    pub fn cookie_store_id(&self) -> &CookieStoreId {
+        &self.cookie_store_id
+    }
+
+    /// Gets a mutable reference to [CookieStoreId] for modifying.
+    pub fn cookie_store_id_mut(&mut self) -> &mut CookieStoreId {
+        &mut self.cookie_store_id
+    }
+
     /// The domain, [None] if the tab does not have a URL.
     /// Fails if a domain cannot be extracted from the contained URL.
     pub fn domain(&self) -> Result<Option<EncodedDomain>, CustomError> {
@@ -98,6 +113,7 @@ impl TabId {
     /// Creates a new ID by trusting the given value.
     /// May be replaced by [FromWasmAbi](wasm_bindgen::convert::FromWasmAbi)
     /// later for brevity and clarity.
+    #[const_fn(cfg(test))]
     pub fn new(tab_id: isize) -> Self {
         Self { inner: tab_id }
     }
@@ -187,5 +203,29 @@ pub async fn current_tab_cookie_store_id() -> Result<CookieStoreId, CustomError>
         Ok(CookieStoreId::new(super::cast_or_standard_mismatch(prop)?))
     } else {
         Err(CustomError::FailedFetchActiveTab)
+    }
+}
+
+#[cfg(test)]
+mock! {
+    pub TabProperties {
+        pub fn cookie_store_id(&self) -> &CookieStoreId;
+        pub fn cookie_store_id_mut(&mut self) -> &mut CookieStoreId;
+        pub fn domain(&self) -> Result<Option<EncodedDomain>, CustomError>;
+        pub fn opener_tab_id<'a>(&'a self) -> Option<&'a TabId>;
+        pub async fn new_tab(&mut self) -> Result<TabId, CustomError>;
+
+        fn private_deserialize(deserializable: Result<TabProperties, ()>) -> Self;
+    }
+}
+
+#[cfg(test)]
+impl<'de> Deserialize<'de> for MockTabProperties {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let serializable = TabProperties::deserialize(deserializer).map_err(|_| ());
+        Ok(MockTabProperties::private_deserialize(serializable))
     }
 }
