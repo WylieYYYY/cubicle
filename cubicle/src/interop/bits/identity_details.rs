@@ -5,7 +5,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use serde::{Deserialize, Serialize};
 use strum::EnumCount;
-use strum_macros::{Display, EnumCount as EnumCountMacro, EnumIter, EnumString, FromRepr};
+use strum_macros::{Display, EnumCount as EnumCountMacro, EnumIter, FromRepr};
 use tera::{Context, Tera};
 
 /// Main styling structure for contextual identity,
@@ -41,16 +41,7 @@ pub trait IdentityDetailsProvider {
 /// [Cycle](IdentityColor::Cycle) may be separated into its own enum in the
 /// future to avoid incorrect deserialization.
 #[derive(
-    Clone,
-    Deserialize,
-    Display,
-    EnumCountMacro,
-    EnumIter,
-    EnumString,
-    Eq,
-    FromRepr,
-    PartialEq,
-    Serialize,
+    Clone, Deserialize, Display, EnumCountMacro, EnumIter, Eq, FromRepr, PartialEq, Serialize,
 )]
 #[cfg_attr(test, derive(Debug))]
 #[serde(rename_all = "lowercase")]
@@ -67,7 +58,8 @@ pub enum IdentityColor {
     Toolbar,
     #[strum(disabled)]
     Cycle,
-    #[strum(disabled, default)]
+    #[serde(untagged)]
+    #[strum(disabled)]
     Unknown(String),
 }
 
@@ -87,7 +79,7 @@ const ICON_URL_TEMPLATE: &str = "resource://usercontext-content/{{name}}.svg";
 
 /// Known supported icon names, [Unknown](IdentityIcon::Unknown) is for
 /// potentially new icons in the future.
-#[derive(Clone, Deserialize, Display, EnumIter, EnumString, Serialize)]
+#[derive(Clone, Deserialize, Display, EnumIter, Serialize)]
 #[cfg_attr(test, derive(Debug, PartialEq, Eq))]
 #[serde(rename_all = "lowercase")]
 #[strum(serialize_all = "lowercase")]
@@ -105,7 +97,8 @@ pub enum IdentityIcon {
     Tree,
     Chill,
     Fence,
-    #[strum(disabled, default)]
+    #[serde(untagged)]
+    #[strum(disabled)]
     Unknown(String),
 }
 
